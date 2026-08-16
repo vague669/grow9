@@ -977,115 +977,133 @@ function drawItemTexture(id){
 const texCache={};
 function tex(id){ if(!texCache[id]) texCache[id]=drawItemTexture(id); return texCache[id]; }
 
-/* ---------- Karakter (Kusursuz Şeffaf Growtopia / PixelWorlds Karakter Üreteci) ---------- */
+/* ---------- Karakter (Birebir PixelWorlds / Growtopia Orijinal PixelArt Üreteci) ---------- */
 let charAnimTextures = null;
 
 function createPixelCharFrame(animType, frameIndex) {
   const canvas = document.createElement('canvas');
-  canvas.width = 40; canvas.height = 48;
+  canvas.width = 64; canvas.height = 64;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  // Animasyon offset ve açı hesapları
-  let headY = 2;
-  let legLeftY = 32, legRightY = 32;
-  let armLeftAngle = 0, armRightAngle = 0;
-  let punchArm = false;
+  // Animasyon parametreleri
+  let headY = 8;
+  let legL_Y = 46, legR_Y = 46;
+  let legL_X = 22, legR_X = 34;
+  let armL_X = 14, armL_Y = 30;
+  let armR_X = 42, armR_Y = 30;
+  let punching = false;
 
   if (animType === 'idle') {
-    headY = frameIndex % 2 === 0 ? 2 : 3;
+    headY = (frameIndex % 2 === 0) ? 8 : 9;
   } else if (animType === 'walk') {
     const f = frameIndex % 4;
-    headY = (f === 1 || f === 3) ? 1 : 2;
-    legLeftY = f === 0 ? 30 : (f === 2 ? 34 : 32);
-    legRightY = f === 0 ? 34 : (f === 2 ? 30 : 32);
-    armLeftAngle = f === 0 ? 0.3 : (f === 2 ? -0.3 : 0);
-    armRightAngle = -armLeftAngle;
+    headY = (f === 1 || f === 3) ? 7 : 8;
+    legL_Y = (f === 0) ? 44 : ((f === 2) ? 48 : 46);
+    legR_Y = (f === 0) ? 48 : ((f === 2) ? 44 : 46);
+    armL_Y = (f === 0) ? 28 : ((f === 2) ? 32 : 30);
+    armR_Y = (f === 0) ? 32 : ((f === 2) ? 28 : 30);
   } else if (animType === 'jump') {
-    headY = 1;
-    legLeftY = 30; legRightY = 30;
-    armLeftAngle = -0.6; armRightAngle = 0.6;
+    headY = 6;
+    legL_Y = 43; legR_Y = 43;
+    armL_Y = 25; armR_Y = 25;
   } else if (animType === 'attack') {
-    punchArm = true;
+    punching = true;
   }
 
-  // Kontur Rengi ve Ten Rengi (Growtopia Tan / Beige)
-  const skinColor = '#d8ab7e';
-  const skinShadow = '#b88b5e';
-  const outlineColor = '#2b1b0e';
-  const shortsColor = '#3b5998';
+  // Renk Paleti (Growtopia Orijinal Ten ve İç Çamaşırı)
+  const OUTLINE = '#382215';
+  const SKIN_MAIN = '#cf9d70';
+  const SKIN_LIGHT = '#e5b88c';
+  const SKIN_SHADOW = '#aa774e';
+  const UNDERWEAR_BASE = '#ded6ca';
+  const UNDERWEAR_SHADOW = '#b0a698';
+  const EYE_WHITE = '#ffffff';
+  const EYE_PUPIL = '#111111';
 
-  ctx.fillStyle = outlineColor;
+  // --- Yardımcı Piksel Çizim ---
+  function rect(x, y, w, h, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  }
 
-  // 1. KAFA (22x20 piksel, yuvarlatılmış kare)
-  const headX = 9;
+  // 1. KAFA (28x24 piksel yuvarlatılmış GT kafası)
+  const hX = 18;
   const hY = headY;
 
-  // Kafa konturu
-  ctx.fillRect(headX, hY, 22, 20);
-  // Kafa ten içi
-  ctx.fillStyle = skinColor;
-  ctx.fillRect(headX + 1, hY + 1, 20, 18);
-  // Kafa gölge (sağ ve alt kenar)
-  ctx.fillStyle = skinShadow;
-  ctx.fillRect(headX + 17, hY + 1, 4, 18);
-  ctx.fillRect(headX + 1, hY + 16, 20, 3);
+  // Dış Kontur (Kafa)
+  rect(hX + 2, hY, 24, 24, OUTLINE);
+  rect(hX, hY + 2, 28, 20, OUTLINE);
 
-  // Gözler (Growtopia stili büyük gözler)
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(headX + 10, hY + 5, 5, 6); // Sol göz beyazı
-  ctx.fillRect(headX + 16, hY + 5, 5, 6); // Sağ göz beyazı
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(headX + 13, hY + 6, 2, 4); // Sol göz bebeği
-  ctx.fillRect(headX + 19, hY + 6, 2, 4); // Sağ göz bebeği
+  // Ten İçi
+  rect(hX + 2, hY + 2, 24, 20, SKIN_MAIN);
 
-  // Ağız
-  ctx.fillStyle = outlineColor;
-  ctx.fillRect(headX + 12, hY + 13, 5, 1);
+  // İşıklı Ten Alanı (Sol/Üst)
+  rect(hX + 2, hY + 2, 20, 4, SKIN_LIGHT);
+  rect(hX + 2, hY + 2, 4, 18, SKIN_LIGHT);
 
-  // 2. GÖVDE (Şortlu vücut)
-  const bodyX = 12;
-  const bodyY = hY + 19;
+  // Gölgeli Ten Alanı (Sağ/Alt)
+  rect(hX + 22, hY + 2, 4, 20, SKIN_SHADOW);
+  rect(hX + 2, hY + 18, 24, 4, SKIN_SHADOW);
 
-  // Gövde üstü (Ten)
-  ctx.fillStyle = outlineColor;
-  ctx.fillRect(bodyX, bodyY, 16, 12);
-  ctx.fillStyle = skinColor;
-  ctx.fillRect(bodyX + 1, bodyY + 1, 14, 6);
+  // GÖZLER (Büyük GT İkonik Gözleri)
+  // Sol Göz
+  rect(hX + 11, hY + 7, 7, 7, OUTLINE);
+  rect(hX + 12, hY + 8, 5, 5, EYE_WHITE);
+  rect(hX + 14, hY + 9, 3, 4, EYE_PUPIL);
+  rect(hX + 15, hY + 9, 1, 1, EYE_WHITE); // Göz parıltısı
 
-  // Şort / Alt çamaşır
-  ctx.fillStyle = shortsColor;
-  ctx.fillRect(bodyX + 1, bodyY + 7, 14, 4);
+  // Sağ Göz
+  rect(hX + 19, hY + 7, 7, 7, OUTLINE);
+  rect(hX + 20, hY + 8, 5, 5, EYE_WHITE);
+  rect(hX + 22, hY + 9, 3, 4, EYE_PUPIL);
+  rect(hX + 23, hY + 9, 1, 1, EYE_WHITE);
 
-  // 3. BACAKLAR
-  ctx.fillStyle = outlineColor;
+  // Ağız & Burun Çizgisi
+  rect(hX + 15, hY + 17, 6, 2, OUTLINE);
+  rect(hX + 16, hY + 17, 4, 1, SKIN_SHADOW);
+
+  // 2. GÖVDE VE İÇ ÇAMAŞIRI (Askılı Atlet + Şort)
+  const bX = 22;
+  const bY = hY + 23;
+
+  // Vücut Kontur
+  rect(bX - 1, bY, 22, 16, OUTLINE);
+  rect(bX, bY + 1, 20, 14, SKIN_MAIN);
+
+  // Atlet / İç Çamaşırı Üst (Askılı)
+  rect(bX + 2, bY + 1, 3, 13, UNDERWEAR_BASE);  // Sol askı
+  rect(bX + 15, bY + 1, 3, 13, UNDERWEAR_BASE); // Sağ askı
+  rect(bX + 2, bY + 7, 16, 7, UNDERWEAR_BASE);  // Alt şort
+  rect(bX + 2, bY + 12, 16, 2, UNDERWEAR_SHADOW);
+
+  // 3. BACAKLAR VE AYAKLAR
   // Sol Bacak
-  ctx.fillRect(bodyX + 1, legLeftY, 5, 10);
-  ctx.fillStyle = skinColor;
-  ctx.fillRect(bodyX + 2, legLeftY + 1, 3, 6);
-  ctx.fillStyle = '#4a321a'; // Ayakkabı/Ayak
-  ctx.fillRect(bodyX + 1, legLeftY + 7, 5, 2);
+  rect(legL_X - 1, legL_Y, 8, 12, OUTLINE);
+  rect(legL_X, legL_Y + 1, 6, 8, SKIN_MAIN);
+  rect(legL_X - 1, legL_Y + 8, 8, 3, OUTLINE); // Ayak
+  rect(legL_X, legL_Y + 9, 6, 2, SKIN_SHADOW);
 
   // Sağ Bacak
-  ctx.fillStyle = outlineColor;
-  ctx.fillRect(bodyX + 10, legRightY, 5, 10);
-  ctx.fillStyle = skinColor;
-  ctx.fillRect(bodyX + 11, legRightY + 1, 3, 6);
-  ctx.fillStyle = '#4a321a';
-  ctx.fillRect(bodyX + 10, legRightY + 7, 5, 2);
+  rect(legR_X - 1, legR_Y, 8, 12, OUTLINE);
+  rect(legR_X, legR_Y + 1, 6, 8, SKIN_MAIN);
+  rect(legR_X - 1, legR_Y + 8, 8, 3, OUTLINE);
+  rect(legR_X, legR_Y + 9, 6, 2, SKIN_SHADOW);
 
   // 4. KOLLAR
-  ctx.fillStyle = outlineColor;
-  if (punchArm) {
-    // Yumruk uzatılmış kol
-    ctx.fillRect(bodyX + 14, bodyY + 2, 9, 5);
-    ctx.fillStyle = skinColor;
-    ctx.fillRect(bodyX + 15, bodyY + 3, 7, 3);
+  if (punching) {
+    // Vurma Kolu
+    rect(bX + 18, bY + 2, 14, 7, OUTLINE);
+    rect(bX + 19, bY + 3, 12, 5, SKIN_MAIN);
+    rect(bX + 27, bY + 3, 4, 5, SKIN_LIGHT);
   } else {
-    // Normal kol
-    ctx.fillRect(bodyX - 3, bodyY + 1, 4, 9);
-    ctx.fillStyle = skinColor;
-    ctx.fillRect(bodyX - 2, bodyY + 2, 2, 7);
+    // Normal Kol Sol
+    rect(armL_X, armL_Y, 6, 12, OUTLINE);
+    rect(armL_X + 1, armL_Y + 1, 4, 10, SKIN_MAIN);
+
+    // Normal Kol Sağ
+    rect(armR_X, armR_Y, 6, 12, OUTLINE);
+    rect(armR_X + 1, armR_Y + 1, 4, 10, SKIN_MAIN);
   }
 
   return PIXI.Texture.from(canvas);
@@ -1149,7 +1167,7 @@ function buildCharacter(){
 
   // ——— Temel karakter animasyon katmanı ———
   const anim=new PIXI.AnimatedSprite(charAnimTextures.idle);
-  anim.anchor.set(0.5,0.85); anim.animationSpeed=0.10; anim.loop=true; anim.play();
+  anim.anchor.set(0.5,0.9); anim.animationSpeed=0.10; anim.loop=true; anim.play();
   anim.zIndex=1;
   c.addChild(anim); c._anim=anim; c._currentAnimName='idle';
 
