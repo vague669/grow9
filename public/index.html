@@ -977,42 +977,127 @@ function drawItemTexture(id){
 const texCache={};
 function tex(id){ if(!texCache[id]) texCache[id]=drawItemTexture(id); return texCache[id]; }
 
-/* ---------- Karakter (gerçek sprite tabanlı animasyon) ---------- */
-const CHAR_ANIM_DEF = { idle:{frames:5}, walk:{frames:8}, jump:{frames:4}, attack:{frames:6} };
+/* ---------- Karakter (Kusursuz Şeffaf Growtopia / PixelWorlds Karakter Üreteci) ---------- */
 let charAnimTextures = null;
-async function loadCharacterAssets(){
-  charAnimTextures = {};
-  for(const name of Object.keys(CHAR_ANIM_DEF)){
-    try {
-      const def = CHAR_ANIM_DEF[name];
-      const btex = await PIXI.Assets.load('assets/char/player_'+name+'.png');
-      btex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-      const totalW = btex.width || btex.baseTexture.width;
-      const totalH = btex.height || btex.baseTexture.height;
-      const numFrames = def.frames;
-      const frameW = Math.floor(totalW / numFrames) || 80;
-      const frameH = totalH || 64;
-      const frames = [];
-      for(let i = 0; i < numFrames; i++){
-        const rectW = Math.min(frameW, totalW - i * frameW);
-        const rectH = totalH;
-        frames.push(new PIXI.Texture(btex.baseTexture, new PIXI.Rectangle(i * frameW, 0, rectW, rectH)));
-      }
-      charAnimTextures[name] = frames;
-    } catch(e) {
-      console.warn('Character asset load fallback for:', name, e);
-    }
+
+function createPixelCharFrame(animType, frameIndex) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 40; canvas.height = 48;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  // Animasyon offset ve açı hesapları
+  let headY = 2;
+  let legLeftY = 32, legRightY = 32;
+  let armLeftAngle = 0, armRightAngle = 0;
+  let punchArm = false;
+
+  if (animType === 'idle') {
+    headY = frameIndex % 2 === 0 ? 2 : 3;
+  } else if (animType === 'walk') {
+    const f = frameIndex % 4;
+    headY = (f === 1 || f === 3) ? 1 : 2;
+    legLeftY = f === 0 ? 30 : (f === 2 ? 34 : 32);
+    legRightY = f === 0 ? 34 : (f === 2 ? 30 : 32);
+    armLeftAngle = f === 0 ? 0.3 : (f === 2 ? -0.3 : 0);
+    armRightAngle = -armLeftAngle;
+  } else if (animType === 'jump') {
+    headY = 1;
+    legLeftY = 30; legRightY = 30;
+    armLeftAngle = -0.6; armRightAngle = 0.6;
+  } else if (animType === 'attack') {
+    punchArm = true;
   }
-  if(!charAnimTextures.idle || !charAnimTextures.idle.length){
-    // Fallback graphics texture if assets fail
-    const g = new PIXI.Graphics();
-    g.beginFill(0xffcc99); g.drawRect(0, 0, 32, 48); g.endFill();
-    const tex = app.renderer.generateTexture(g);
-    charAnimTextures.idle = [tex];
+
+  // Kontur Rengi ve Ten Rengi (Growtopia Tan / Beige)
+  const skinColor = '#d8ab7e';
+  const skinShadow = '#b88b5e';
+  const outlineColor = '#2b1b0e';
+  const shortsColor = '#3b5998';
+
+  ctx.fillStyle = outlineColor;
+
+  // 1. KAFA (22x20 piksel, yuvarlatılmış kare)
+  const headX = 9;
+  const hY = headY;
+
+  // Kafa konturu
+  ctx.fillRect(headX, hY, 22, 20);
+  // Kafa ten içi
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(headX + 1, hY + 1, 20, 18);
+  // Kafa gölge (sağ ve alt kenar)
+  ctx.fillStyle = skinShadow;
+  ctx.fillRect(headX + 17, hY + 1, 4, 18);
+  ctx.fillRect(headX + 1, hY + 16, 20, 3);
+
+  // Gözler (Growtopia stili büyük gözler)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(headX + 10, hY + 5, 5, 6); // Sol göz beyazı
+  ctx.fillRect(headX + 16, hY + 5, 5, 6); // Sağ göz beyazı
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(headX + 13, hY + 6, 2, 4); // Sol göz bebeği
+  ctx.fillRect(headX + 19, hY + 6, 2, 4); // Sağ göz bebeği
+
+  // Ağız
+  ctx.fillStyle = outlineColor;
+  ctx.fillRect(headX + 12, hY + 13, 5, 1);
+
+  // 2. GÖVDE (Şortlu vücut)
+  const bodyX = 12;
+  const bodyY = hY + 19;
+
+  // Gövde üstü (Ten)
+  ctx.fillStyle = outlineColor;
+  ctx.fillRect(bodyX, bodyY, 16, 12);
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(bodyX + 1, bodyY + 1, 14, 6);
+
+  // Şort / Alt çamaşır
+  ctx.fillStyle = shortsColor;
+  ctx.fillRect(bodyX + 1, bodyY + 7, 14, 4);
+
+  // 3. BACAKLAR
+  ctx.fillStyle = outlineColor;
+  // Sol Bacak
+  ctx.fillRect(bodyX + 1, legLeftY, 5, 10);
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(bodyX + 2, legLeftY + 1, 3, 6);
+  ctx.fillStyle = '#4a321a'; // Ayakkabı/Ayak
+  ctx.fillRect(bodyX + 1, legLeftY + 7, 5, 2);
+
+  // Sağ Bacak
+  ctx.fillStyle = outlineColor;
+  ctx.fillRect(bodyX + 10, legRightY, 5, 10);
+  ctx.fillStyle = skinColor;
+  ctx.fillRect(bodyX + 11, legRightY + 1, 3, 6);
+  ctx.fillStyle = '#4a321a';
+  ctx.fillRect(bodyX + 10, legRightY + 7, 5, 2);
+
+  // 4. KOLLAR
+  ctx.fillStyle = outlineColor;
+  if (punchArm) {
+    // Yumruk uzatılmış kol
+    ctx.fillRect(bodyX + 14, bodyY + 2, 9, 5);
+    ctx.fillStyle = skinColor;
+    ctx.fillRect(bodyX + 15, bodyY + 3, 7, 3);
+  } else {
+    // Normal kol
+    ctx.fillRect(bodyX - 3, bodyY + 1, 4, 9);
+    ctx.fillStyle = skinColor;
+    ctx.fillRect(bodyX - 2, bodyY + 2, 2, 7);
   }
-  if(!charAnimTextures.walk) charAnimTextures.walk = charAnimTextures.idle;
-  if(!charAnimTextures.jump) charAnimTextures.jump = charAnimTextures.idle;
-  if(!charAnimTextures.attack) charAnimTextures.attack = charAnimTextures.idle;
+
+  return PIXI.Texture.from(canvas);
+}
+
+async function loadCharacterAssets() {
+  charAnimTextures = {
+    idle: [createPixelCharFrame('idle', 0), createPixelCharFrame('idle', 1)],
+    walk: [createPixelCharFrame('walk', 0), createPixelCharFrame('walk', 1), createPixelCharFrame('walk', 2), createPixelCharFrame('walk', 3)],
+    jump: [createPixelCharFrame('jump', 0)],
+    attack: [createPixelCharFrame('attack', 0), createPixelCharFrame('attack', 1)]
+  };
 }
 function setCharAnim(c, name, opts){
   opts = opts||{};
