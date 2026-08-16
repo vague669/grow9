@@ -978,26 +978,41 @@ const texCache={};
 function tex(id){ if(!texCache[id]) texCache[id]=drawItemTexture(id); return texCache[id]; }
 
 /* ---------- Karakter (gerçek sprite tabanlı animasyon) ---------- */
-// idle:2 frame, walk:4 frame, jump:1 frame, attack:4 frame
-// Her frame 96x96 piksel (48px karakter 2x scale)
-const CHAR_ANIM_DEF = { idle:{frames:2,w:96,h:96}, walk:{frames:4,w:96,h:96}, jump:{frames:1,w:96,h:96}, attack:{frames:4,w:96,h:96} };
+const CHAR_ANIM_DEF = { idle:{frames:5}, walk:{frames:8}, jump:{frames:4}, attack:{frames:6} };
 let charAnimTextures = null;
 async function loadCharacterAssets(){
   charAnimTextures = {};
   for(const name of Object.keys(CHAR_ANIM_DEF)){
-    const def = CHAR_ANIM_DEF[name];
-    const btex = await PIXI.Assets.load('assets/char/player_'+name+'.png');
-    btex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
-    const frames=[];
-    for(let i=0;i<def.frames;i++){
-      frames.push(new PIXI.Texture(btex.baseTexture, new PIXI.Rectangle(i*def.w, 0, def.w, def.h)));
+    try {
+      const def = CHAR_ANIM_DEF[name];
+      const btex = await PIXI.Assets.load('assets/char/player_'+name+'.png');
+      btex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+      const totalW = btex.width || btex.baseTexture.width;
+      const totalH = btex.height || btex.baseTexture.height;
+      const numFrames = def.frames;
+      const frameW = Math.floor(totalW / numFrames) || 80;
+      const frameH = totalH || 64;
+      const frames = [];
+      for(let i = 0; i < numFrames; i++){
+        const rectW = Math.min(frameW, totalW - i * frameW);
+        const rectH = totalH;
+        frames.push(new PIXI.Texture(btex.baseTexture, new PIXI.Rectangle(i * frameW, 0, rectW, rectH)));
+      }
+      charAnimTextures[name] = frames;
+    } catch(e) {
+      console.warn('Character asset load fallback for:', name, e);
     }
-    charAnimTextures[name]=frames;
   }
-  // Yedek: eğer attack yüklenemezse idle kullan
-  if(!charAnimTextures.attack || !charAnimTextures.attack.length){
-    charAnimTextures.attack = charAnimTextures.idle;
+  if(!charAnimTextures.idle || !charAnimTextures.idle.length){
+    // Fallback graphics texture if assets fail
+    const g = new PIXI.Graphics();
+    g.beginFill(0xffcc99); g.drawRect(0, 0, 32, 48); g.endFill();
+    const tex = app.renderer.generateTexture(g);
+    charAnimTextures.idle = [tex];
   }
+  if(!charAnimTextures.walk) charAnimTextures.walk = charAnimTextures.idle;
+  if(!charAnimTextures.jump) charAnimTextures.jump = charAnimTextures.idle;
+  if(!charAnimTextures.attack) charAnimTextures.attack = charAnimTextures.idle;
 }
 function setCharAnim(c, name, opts){
   opts = opts||{};
