@@ -982,36 +982,46 @@ let charAnimTextures = null;
 
 function createPixelCharFrame(animType, frameIndex) {
   const canvas = document.createElement('canvas');
-  canvas.width = 64; canvas.height = 64;
+  canvas.width = 40; canvas.height = 48;
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
 
-  // Animasyon parametreleri
-  let headY = 8;
-  let legL_Y = 46, legR_Y = 46;
-  let legL_X = 22, legR_X = 34;
-  let armL_X = 14, armL_Y = 30;
-  let armR_X = 42, armR_Y = 30;
+  // Animasyon Poz Hesaplamaları (5 Akıcı Hareket)
+  let headY = 4;
+  let legL_Y = 32, legR_Y = 32;
+  let legL_X = 12, legR_X = 22;
+  let armL_Y = 20, armR_Y = 20;
+  let armL_X = 6, armR_X = 28;
+  let blink = false;
   let punching = false;
+  let punchProgress = 0;
 
   if (animType === 'idle') {
-    headY = (frameIndex % 2 === 0) ? 8 : 9;
-  } else if (animType === 'walk') {
     const f = frameIndex % 4;
-    headY = (f === 1 || f === 3) ? 7 : 8;
-    legL_Y = (f === 0) ? 44 : ((f === 2) ? 48 : 46);
-    legR_Y = (f === 0) ? 48 : ((f === 2) ? 44 : 46);
-    armL_Y = (f === 0) ? 28 : ((f === 2) ? 32 : 30);
-    armR_Y = (f === 0) ? 32 : ((f === 2) ? 28 : 30);
+    headY = (f === 1 || f === 2) ? 5 : 4;
+    blink = (f === 2); // Nefes alırken göz kırpma
+  } else if (animType === 'walk') {
+    const f = frameIndex % 6; // 6 Kare Akıcı Yürüme
+    headY = (f === 1 || f === 4) ? 3 : 4;
+    legL_Y = (f === 0 || f === 1) ? 30 : ((f === 3 || f === 4) ? 34 : 32);
+    legR_Y = (f === 3 || f === 4) ? 30 : ((f === 0 || f === 1) ? 34 : 32);
+    armL_Y = (f < 3) ? 18 : 22;
+    armR_Y = (f < 3) ? 22 : 18;
   } else if (animType === 'jump') {
-    headY = 6;
-    legL_Y = 43; legR_Y = 43;
-    armL_Y = 25; armR_Y = 25;
+    const f = frameIndex % 3;
+    headY = (f === 0) ? 3 : 2;
+    legL_Y = 30; legR_Y = 30;
+    armL_Y = 16; armR_Y = 16;
+  } else if (animType === 'fall') {
+    headY = 5;
+    legL_Y = 34; legR_Y = 34;
+    armL_Y = 17; armR_Y = 17;
   } else if (animType === 'attack') {
     punching = true;
+    punchProgress = frameIndex % 4;
   }
 
-  // Renk Paleti (Growtopia Orijinal Ten ve İç Çamaşırı)
+  // Renk Paleti (Orijinal GT Ten & Askılı Şort)
   const OUTLINE = '#382215';
   const SKIN_MAIN = '#cf9d70';
   const SKIN_LIGHT = '#e5b88c';
@@ -1021,89 +1031,85 @@ function createPixelCharFrame(animType, frameIndex) {
   const EYE_WHITE = '#ffffff';
   const EYE_PUPIL = '#111111';
 
-  // --- Yardımcı Piksel Çizim ---
   function rect(x, y, w, h, color) {
     ctx.fillStyle = color;
-    ctx.fillRect(x, y, w, h);
+    ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
   }
 
-  // 1. KAFA (28x24 piksel yuvarlatılmış GT kafası)
-  const hX = 18;
+  // 1. KAFA (18x16 px)
+  const hX = 11;
   const hY = headY;
 
-  // Dış Kontur (Kafa)
-  rect(hX + 2, hY, 24, 24, OUTLINE);
-  rect(hX, hY + 2, 28, 20, OUTLINE);
+  // Dış Kontur & Kafa İçi
+  rect(hX + 1, hY, 16, 16, OUTLINE);
+  rect(hX, hY + 1, 18, 14, OUTLINE);
+  rect(hX + 1, hY + 1, 16, 14, SKIN_MAIN);
 
-  // Ten İçi
-  rect(hX + 2, hY + 2, 24, 20, SKIN_MAIN);
+  // Isık/Gölge
+  rect(hX + 1, hY + 1, 14, 2, SKIN_LIGHT);
+  rect(hX + 1, hY + 1, 2, 12, SKIN_LIGHT);
+  rect(hX + 14, hY + 1, 3, 14, SKIN_SHADOW);
+  rect(hX + 1, hY + 12, 16, 3, SKIN_SHADOW);
 
-  // İşıklı Ten Alanı (Sol/Üst)
-  rect(hX + 2, hY + 2, 20, 4, SKIN_LIGHT);
-  rect(hX + 2, hY + 2, 4, 18, SKIN_LIGHT);
+  // GÖZLER
+  if (blink) {
+    rect(hX + 6, hY + 6, 4, 1, OUTLINE);
+    rect(hX + 11, hY + 6, 4, 1, OUTLINE);
+  } else {
+    // Sol Göz
+    rect(hX + 6, hY + 4, 4, 5, OUTLINE);
+    rect(hX + 7, hY + 5, 3, 3, EYE_WHITE);
+    rect(hX + 8, hY + 5, 2, 3, EYE_PUPIL);
+    rect(hX + 9, hY + 5, 1, 1, EYE_WHITE);
 
-  // Gölgeli Ten Alanı (Sağ/Alt)
-  rect(hX + 22, hY + 2, 4, 20, SKIN_SHADOW);
-  rect(hX + 2, hY + 18, 24, 4, SKIN_SHADOW);
+    // Sağ Göz
+    rect(hX + 11, hY + 4, 4, 5, OUTLINE);
+    rect(hX + 12, hY + 5, 3, 3, EYE_WHITE);
+    rect(hX + 13, hY + 5, 2, 3, EYE_PUPIL);
+    rect(hX + 14, hY + 5, 1, 1, EYE_WHITE);
+  }
 
-  // GÖZLER (Büyük GT İkonik Gözleri)
-  // Sol Göz
-  rect(hX + 11, hY + 7, 7, 7, OUTLINE);
-  rect(hX + 12, hY + 8, 5, 5, EYE_WHITE);
-  rect(hX + 14, hY + 9, 3, 4, EYE_PUPIL);
-  rect(hX + 15, hY + 9, 1, 1, EYE_WHITE); // Göz parıltısı
+  // Ağız
+  rect(hX + 9, hY + 11, 4, 1, OUTLINE);
 
-  // Sağ Göz
-  rect(hX + 19, hY + 7, 7, 7, OUTLINE);
-  rect(hX + 20, hY + 8, 5, 5, EYE_WHITE);
-  rect(hX + 22, hY + 9, 3, 4, EYE_PUPIL);
-  rect(hX + 23, hY + 9, 1, 1, EYE_WHITE);
+  // 2. GÖVDE & İÇ ÇAMAŞIRI
+  const bX = 13;
+  const bY = hY + 15;
 
-  // Ağız & Burun Çizgisi
-  rect(hX + 15, hY + 17, 6, 2, OUTLINE);
-  rect(hX + 16, hY + 17, 4, 1, SKIN_SHADOW);
+  rect(bX - 1, bY, 16, 12, OUTLINE);
+  rect(bX, bY + 1, 14, 10, SKIN_MAIN);
 
-  // 2. GÖVDE VE İÇ ÇAMAŞIRI (Askılı Atlet + Şort)
-  const bX = 22;
-  const bY = hY + 23;
+  // Askılı Atlet & Şort
+  rect(bX + 1, bY + 1, 2, 9, UNDERWEAR_BASE);  // Sol askı
+  rect(bX + 11, bY + 1, 2, 9, UNDERWEAR_BASE); // Sağ askı
+  rect(bX + 1, bY + 5, 12, 5, UNDERWEAR_BASE);  // Şort
+  rect(bX + 1, bY + 9, 12, 1, UNDERWEAR_SHADOW);
 
-  // Vücut Kontur
-  rect(bX - 1, bY, 22, 16, OUTLINE);
-  rect(bX, bY + 1, 20, 14, SKIN_MAIN);
-
-  // Atlet / İç Çamaşırı Üst (Askılı)
-  rect(bX + 2, bY + 1, 3, 13, UNDERWEAR_BASE);  // Sol askı
-  rect(bX + 15, bY + 1, 3, 13, UNDERWEAR_BASE); // Sağ askı
-  rect(bX + 2, bY + 7, 16, 7, UNDERWEAR_BASE);  // Alt şort
-  rect(bX + 2, bY + 12, 16, 2, UNDERWEAR_SHADOW);
-
-  // 3. BACAKLAR VE AYAKLAR
+  // 3. BACAKLAR
   // Sol Bacak
-  rect(legL_X - 1, legL_Y, 8, 12, OUTLINE);
-  rect(legL_X, legL_Y + 1, 6, 8, SKIN_MAIN);
-  rect(legL_X - 1, legL_Y + 8, 8, 3, OUTLINE); // Ayak
-  rect(legL_X, legL_Y + 9, 6, 2, SKIN_SHADOW);
+  rect(legL_X - 1, legL_Y, 6, 9, OUTLINE);
+  rect(legL_X, legL_Y + 1, 4, 6, SKIN_MAIN);
+  rect(legL_X - 1, legL_Y + 6, 6, 2, OUTLINE);
+  rect(legL_X, legL_Y + 6, 4, 2, SKIN_SHADOW);
 
   // Sağ Bacak
-  rect(legR_X - 1, legR_Y, 8, 12, OUTLINE);
-  rect(legR_X, legR_Y + 1, 6, 8, SKIN_MAIN);
-  rect(legR_X - 1, legR_Y + 8, 8, 3, OUTLINE);
-  rect(legR_X, legR_Y + 9, 6, 2, SKIN_SHADOW);
+  rect(legR_X - 1, legR_Y, 6, 9, OUTLINE);
+  rect(legR_X, legR_Y + 1, 4, 6, SKIN_MAIN);
+  rect(legR_X - 1, legR_Y + 6, 6, 2, OUTLINE);
+  rect(legR_X, legR_Y + 6, 4, 2, SKIN_SHADOW);
 
   // 4. KOLLAR
   if (punching) {
-    // Vurma Kolu
-    rect(bX + 18, bY + 2, 14, 7, OUTLINE);
-    rect(bX + 19, bY + 3, 12, 5, SKIN_MAIN);
-    rect(bX + 27, bY + 3, 4, 5, SKIN_LIGHT);
+    const ext = punchProgress * 2;
+    rect(bX + 11, bY + 1, 8 + ext, 5, OUTLINE);
+    rect(bX + 12, bY + 2, 6 + ext, 3, SKIN_MAIN);
   } else {
-    // Normal Kol Sol
-    rect(armL_X, armL_Y, 6, 12, OUTLINE);
-    rect(armL_X + 1, armL_Y + 1, 4, 10, SKIN_MAIN);
-
-    // Normal Kol Sağ
-    rect(armR_X, armR_Y, 6, 12, OUTLINE);
-    rect(armR_X + 1, armR_Y + 1, 4, 10, SKIN_MAIN);
+    // Sol Kol
+    rect(armL_X, armL_Y, 5, 9, OUTLINE);
+    rect(armL_X + 1, armL_Y + 1, 3, 7, SKIN_MAIN);
+    // Sağ Kol
+    rect(armR_X, armR_Y, 5, 9, OUTLINE);
+    rect(armR_X + 1, armR_Y + 1, 3, 7, SKIN_MAIN);
   }
 
   return PIXI.Texture.from(canvas);
@@ -1111,10 +1117,11 @@ function createPixelCharFrame(animType, frameIndex) {
 
 async function loadCharacterAssets() {
   charAnimTextures = {
-    idle: [createPixelCharFrame('idle', 0), createPixelCharFrame('idle', 1)],
-    walk: [createPixelCharFrame('walk', 0), createPixelCharFrame('walk', 1), createPixelCharFrame('walk', 2), createPixelCharFrame('walk', 3)],
-    jump: [createPixelCharFrame('jump', 0)],
-    attack: [createPixelCharFrame('attack', 0), createPixelCharFrame('attack', 1)]
+    idle: [createPixelCharFrame('idle', 0), createPixelCharFrame('idle', 1), createPixelCharFrame('idle', 2), createPixelCharFrame('idle', 3)],
+    walk: [createPixelCharFrame('walk', 0), createPixelCharFrame('walk', 1), createPixelCharFrame('walk', 2), createPixelCharFrame('walk', 3), createPixelCharFrame('walk', 4), createPixelCharFrame('walk', 5)],
+    jump: [createPixelCharFrame('jump', 0), createPixelCharFrame('jump', 1), createPixelCharFrame('jump', 2)],
+    fall: [createPixelCharFrame('fall', 0), createPixelCharFrame('fall', 1)],
+    attack: [createPixelCharFrame('attack', 0), createPixelCharFrame('attack', 1), createPixelCharFrame('attack', 2), createPixelCharFrame('attack', 3)]
   };
 }
 function setCharAnim(c, name, opts){
@@ -1235,6 +1242,7 @@ async function ensureCharacterReady(){
 /* ---------- Diğer oyuncular (multiplayer) ---------- */
 const remotePlayers={}; // socketId -> {container, label, targetX, targetY, dir}
 function addRemotePlayer(p){
+  if(!p || !p.id || (socket && p.id === socket.id)) return;
   if(remotePlayers[p.id] || !charAnimTextures) return;
   const c=buildCharacter(); c.zIndex=49; world.addChild(c);
   const label=new PIXI.Text(p.username,{fontFamily:'Trebuchet MS',fontSize:12,fill:0xffffff,stroke:0x000000,strokeThickness:3});
@@ -2922,12 +2930,17 @@ function update(delta){
     if(bubbleTimer<=0){ world.removeChild(bubbleText); bubbleText=null; }
   }
 
-  // durum bazlı animasyon seçimi: alt gövde her zaman hareket durumuna göre oynar (jump>walk>idle),
-  // üst gövde vuruş katmanı bağımsız olarak ayrıca tetiklenir (setCharAnim içinde overlay).
-  const moving = Math.abs(player.vx)>0.4 && player.onGround;
-  const bodyState = !player.onGround ? 'jump' : (moving ? 'walk' : 'idle');
-  setCharAnim(charSprite, bodyState, {speed: bodyState==='jump'?0.10:(bodyState==='walk'?0.14:0.06)});
-  if(punchT>0){ setCharAnim(charSprite,'attack'); }
+  // Durum bazlı akıcı animasyon seçimi (jump, fall, walk, idle, attack)
+  const moving = Math.abs(player.vx) > 0.4 && player.onGround;
+  let bodyState = 'idle';
+  if (!player.onGround) {
+    bodyState = player.vy > 1.5 ? 'fall' : 'jump';
+  } else if (moving) {
+    bodyState = 'walk';
+  }
+  const animSpeed = bodyState === 'walk' ? 0.16 : (bodyState === 'jump' ? 0.12 : (bodyState === 'fall' ? 0.10 : 0.08));
+  setCharAnim(charSprite, bodyState, { speed: animSpeed });
+  if (punchT > 0) { setCharAnim(charSprite, 'attack'); }
   updateWingMotion(charSprite, bodyState, Date.now());
 
   if(punchT>0){ punchT-=delta*0.045; if(punchT<=0) punchT=0; }
