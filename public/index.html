@@ -1,0 +1,3104 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Dirtopia v3</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.0/pixi.min.js"></script>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+  html,body{margin:0;padding:0;background:#0a0a14;overflow:hidden;font-family:'Trebuchet MS',Arial,sans-serif;user-select:none;}
+  #root{width:100vw;height:100vh;position:relative;}
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;z-index:30;}
+  @keyframes glowPulse{0%,100%{box-shadow:0 0 0 2px #0a1226,0 10px 40px rgba(0,0,0,.7),0 0 22px rgba(255,140,60,.35) inset,0 0 18px rgba(255,140,60,.35)}50%{box-shadow:0 0 0 2px #0a1226,0 10px 40px rgba(0,0,0,.7),0 0 34px rgba(255,140,60,.6) inset,0 0 30px rgba(255,140,60,.55)}}
+  .panel{position:relative;background:linear-gradient(180deg,#1c2144,#0a0e22);border:3px solid #ffb347;border-radius:16px;padding:22px 28px;min-width:300px;animation:glowPulse 3s ease-in-out infinite;}
+  .panel::before,.panel::after{content:'🔥';position:absolute;font-size:16px;opacity:.85;filter:drop-shadow(0 0 4px #ff8c3c);}
+  .panel::before{top:-11px;left:14px;}
+  .panel::after{top:-11px;right:14px;}
+  h1{font-size:34px;margin:0 0 4px;text-shadow:2px 2px 0 #000,0 0 18px rgba(255,140,60,.6);color:#ffe680;background:linear-gradient(180deg,#fff2b8,#ff8c3c);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:1px;}
+  h2{font-size:19px;margin:0 0 10px;color:#ffcf7a;text-shadow:0 0 8px rgba(255,160,60,.5);}
+  .sub{opacity:.8;margin-bottom:12px;font-size:12px;}
+  input{width:100%;box-sizing:border-box;padding:9px 10px;margin:5px 0;border-radius:6px;border:2px solid #2a3a5c;background:#101830;color:#eaf3ff;font-size:14px;}
+  input::placeholder{color:#7f93b8;}
+  button{cursor:pointer;border:none;border-radius:8px;padding:9px 16px;font-weight:bold;font-size:13px;background:linear-gradient(180deg,#ffd257,#e8a70f);color:#3a2600;box-shadow:0 3px 0 #a3730a;margin:3px 3px 0 0;transition:filter .12s;}
+  button:hover{filter:brightness(1.08);}
+  button:active{transform:translateY(2px);box-shadow:none;}
+  button.secondary{background:linear-gradient(180deg,#7fd6ff,#3aa0d6);color:#04263a;box-shadow:0 3px 0 #1c6488;}
+  button.danger{background:linear-gradient(180deg,#ff7f7f,#d63a3a);color:#3a0404;box-shadow:0 3px 0 #881c1c;}
+  button.green{background:linear-gradient(180deg,#8fffb0,#2fbf62);color:#04361a;box-shadow:0 3px 0 #1a7a3d;}
+  button.fire{background:linear-gradient(180deg,#ffb84d,#ff5c1a);color:#3a1000;box-shadow:0 3px 0 #a3350a;}
+  .worldItem{display:flex;justify-content:space-between;align-items:center;background:linear-gradient(180deg,#141b36,#0a0f22);border:1px solid #2a3a5c;border-radius:6px;padding:6px 10px;margin:4px 0;font-size:12px;}
+  .hidden{display:none!important;}
+  #hud{position:absolute;top:8px;left:8px;z-index:15;display:flex;gap:6px;align-items:center;}
+  .hudBox{background:linear-gradient(180deg,#1c2144,#0a0e22);border:2px solid #ffb347;border-radius:10px;padding:5px 12px;color:#fff;font-size:14px;font-weight:bold;box-shadow:0 3px 10px rgba(0,0,0,.5),0 0 10px rgba(255,140,60,.25);display:flex;align-items:center;gap:5px;}
+  #shopBtnWrap{position:absolute;top:46px;left:8px;z-index:15;}
+  #btnShopQuick{background:linear-gradient(180deg,#3ad66e,#1a8a3f);border:2px solid #8dffb0;border-radius:10px;padding:6px 12px;font-size:12px;color:#fff;font-weight:bold;box-shadow:0 3px 10px rgba(0,0,0,.5);cursor:pointer;}
+  #topbar{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:25;}
+  #topbar button{padding:6px 10px;font-size:12px;margin:0;}
+  #pauseMenu .panel,#lockModal .panel{width:290px;text-align:center;}
+  #storeModal .panel{width:480px;text-align:center;}
+  #pauseMenu button{width:100%;margin:5px 0;}
+
+  /* CHAT - yukarıdan aşağı açılır */
+  #chatWrap{position:absolute;top:0;left:50%;transform:translate(-50%,-100%);transition:transform .25s ease;width:420px;z-index:20;}
+  #chatWrap.open{transform:translate(-50%,0);}
+  #chatPanel{background:rgba(10,14,34,.94);border:1px solid #3a4a7c;border-top:none;border-radius:0 0 10px 10px;color:#fff;font-size:12px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.5);}
+  #chatTabs{display:flex;}
+  #chatTabs div{flex:1;text-align:center;padding:6px;cursor:pointer;background:rgba(255,255,255,.06);}
+  #chatTabs div.active{background:rgba(255,180,80,.22);font-weight:bold;color:#ffcf7a}
+  #chatClose{position:absolute;top:2px;right:6px;background:none;box-shadow:none;color:#fff;font-size:14px;padding:2px 6px;}
+  #chatLog{height:130px;overflow-y:auto;padding:6px 10px;}
+  #chatLog div{margin:2px 0;word-wrap:break-word;}
+  .ownerName{color:#5cff5c;font-weight:bold}
+  #chatInput{width:100%;border-radius:0;margin:0;font-size:12px;padding:8px 10px;box-sizing:border-box;border:none;border-top:1px solid #2a3a5c;}
+
+  /* HOTBAR */
+  #invBar{position:absolute;left:50%;transform:translateX(-50%);bottom:8px;display:flex;gap:4px;background:rgba(10,14,30,.75);border:1px solid #3a4a7c;padding:6px;border-radius:10px;z-index:15;}
+  .slot{width:46px;height:46px;background:#101830;border:2px solid #2a3a5c;border-radius:6px;position:relative;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .slot.selected{border-color:#ffb347;box-shadow:0 0 10px #ff8c3c;}
+  .slot.worn{border-color:#5cff5c;box-shadow:0 0 8px #5cff5c;}
+  .slot canvas{image-rendering:pixelated;pointer-events:none;}
+  .qty{position:absolute;bottom:0;right:2px;font-size:10px;color:#fff;text-shadow:1px 1px 1px #000;pointer-events:none;}
+
+  /* FULL INVENTORY — sol: eşya ızgarası, sağ: RECYCLE/DROP/EQUIP/INFO dikey buton sütunu (gerçek Growtopia paneline yakın) */
+  #fullInv{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);width:480px;background:linear-gradient(180deg,#161c3a,#0a0e22);border:3px solid #3aa0d6;border-radius:12px;padding:10px;color:#fff;z-index:22;box-shadow:0 10px 30px rgba(0,0,0,.6);}
+  #invTabs{display:flex;gap:4px;margin-bottom:6px;}
+  #invTabs div{flex:1;text-align:center;padding:4px;font-size:11px;border-radius:5px;background:rgba(255,255,255,.08);cursor:pointer;}
+  #invTabs div.active{background:rgba(255,180,80,.3);color:#ffcf7a;font-weight:bold}
+  #invBody{display:flex;gap:8px;}
+  #invGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-height:220px;overflow-y:auto;padding:4px;flex:1;}
+  #invHeader{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:13px;}
+  #invActions{display:flex;flex-direction:column;gap:6px;width:100px;}
+  #invActions button{font-size:11px;padding:8px 6px;margin:0;}
+  #itemDesc{font-size:11px;background:rgba(255,255,255,.06);border:1px solid #2a3a5c;border-radius:6px;padding:6px 8px;margin-top:6px;min-height:32px}
+
+  #lockInfo{position:absolute;top:86px;left:8px;color:#ffcf7a;font-size:11px;background:rgba(0,0,0,.4);padding:4px 8px;border-radius:6px;z-index:15;}
+  #accessList{max-height:150px;overflow-y:auto;margin:8px 0;text-align:left;}
+  .accessRow{display:flex;justify-content:space-between;align-items:center;background:#101830;border:1px solid #2a3a5c;padding:5px 8px;border-radius:5px;margin:3px 0;font-size:12px}
+
+  /* STORE — sekmeli, kart tabanlı (Galaxy Mağazası tarzı) */
+  #storeTabs{display:flex;gap:4px;margin-bottom:8px;}
+  #storeTabs div{flex:1;text-align:center;padding:6px;font-size:11px;border-radius:6px;background:rgba(255,255,255,.08);cursor:pointer;}
+  #storeTabs div.active{background:rgba(255,180,80,.3);color:#ffcf7a;font-weight:bold}
+  #storeList{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:280px;overflow-y:auto;padding:4px;}
+  .storeCard{background:linear-gradient(180deg,#1c2144,#0a0e22);border:2px solid #3a4a7c;border-radius:10px;padding:8px;text-align:center;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .recipeCard{background:linear-gradient(180deg,#1c2144,#0a0e22);border:2px solid #3a4a7c;border-radius:10px;padding:10px;text-align:left;font-size:12px;}
+  .recipeCard.canMake{border-color:#6ee87e;}
+  .recipeIngredient{display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,.06);border-radius:5px;padding:2px 6px;margin:2px 3px 0 0;font-size:11px;}
+  .recipeIngredient.missing{color:#ff8a8a;}
+  .storeCard canvas{image-rendering:pixelated;}
+  .storeCard button{width:100%;font-size:10px;padding:5px 4px;}
+  .storeCard .price{color:#ffe680;font-weight:bold;font-size:12px;}
+
+  #floatText{position:absolute;pointer-events:none;z-index:14;inset:0;overflow:hidden;}
+  .floatgem{position:absolute;color:#ff4d6d;font-weight:bold;font-size:13px;text-shadow:1px 1px 0 #000;animation:floatUp 1s ease-out forwards;}
+  @keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-40px)}}
+  #crackOverlay{position:absolute;pointer-events:none;z-index:5;}
+  #growTooltip{position:absolute;pointer-events:none;background:rgba(10,14,34,.92);border:1px solid #ffb347;border-radius:6px;padding:4px 8px;color:#fff;font-size:11px;z-index:18;transform:translate(-50%,-130%);white-space:nowrap;}
+
+  /* ===== HEALTH BAR ===== */
+  #healthBar{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:6px;background:rgba(10,14,34,.85);border:2px solid #3a4a7c;border-radius:20px;padding:5px 14px;}
+  #healthBar .hearts{display:flex;gap:3px;}
+  #healthBar .heart{font-size:16px;transition:transform .15s;}
+  #healthBar .heart.empty{filter:grayscale(1);opacity:.3;}
+  #healthBar .hpText{color:#ff6b8a;font-size:12px;font-weight:bold;min-width:36px;text-align:right;}
+
+  /* ===== DEATH SCREEN ===== */
+  #deathScreen{position:absolute;inset:0;background:rgba(0,0,0,.82);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;display:none;}
+  #deathScreen.show{display:flex;}
+  #deathScreen h2{font-size:48px;color:#ff4d4d;text-shadow:0 0 30px #ff0000;margin:0 0 10px;animation:deathPulse 1s ease-in-out infinite;}
+  @keyframes deathPulse{0%,100%{text-shadow:0 0 30px #ff0000}50%{text-shadow:0 0 60px #ff6600,0 0 100px #ff0000}}
+  #deathScreen p{font-size:20px;color:#ffcf7a;margin:0 0 20px;}
+  #deathCountdown{font-size:60px;font-weight:bold;color:#ffffff;text-shadow:0 0 20px #00ffff;}
+  @keyframes damageFlash{0%{background:rgba(255,0,0,.4)}100%{background:transparent}}
+  .damage-flash{animation:damageFlash .3s ease-out forwards;}
+
+  /* ===== WRENCH ICON ===== */
+  .wrench-icon{cursor:pointer;font-size:14px;margin-left:4px;opacity:.8;transition:transform .2s,opacity .2s;display:inline-block;animation:wrenchSway 2s ease-in-out infinite;}
+  @keyframes wrenchSway{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+  .wrench-icon:hover{opacity:1;transform:scale(1.3)!important;}
+
+  /* ===== TRADE MODAL ===== */
+  #tradeModal{position:absolute;inset:0;background:rgba(0,0,0,.8);z-index:60;display:none;align-items:center;justify-content:center;}
+  #tradeModal.show{display:flex;}
+  #tradePanel{background:linear-gradient(180deg,#1a2040,#0d1128);border:3px solid #3aa0d6;border-radius:16px;padding:18px;width:560px;color:#fff;box-shadow:0 0 40px rgba(58,160,214,.3);}
+  #tradePanel h3{text-align:center;margin:0 0 14px;color:#7fd6ff;font-size:18px;}
+  .tradeSides{display:flex;gap:12px;}
+  .tradeSide{flex:1;background:rgba(255,255,255,.05);border:2px solid #2a3a5c;border-radius:10px;padding:10px;}
+  .tradeSide h4{margin:0 0 8px;font-size:13px;color:#ffcf7a;text-align:center;}
+  .tradeItems{min-height:120px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start;}
+  .tradeItem{background:#101830;border:2px solid #3a4a7c;border-radius:6px;padding:4px 8px;font-size:11px;display:flex;align-items:center;gap:4px;cursor:pointer;}
+  .tradeItem:hover{border-color:#ff6b6b;}
+  .tradeBtns{display:flex;gap:8px;margin-top:14px;justify-content:center;}
+  .tradeStatus{text-align:center;font-size:12px;color:#8adfff;margin-top:8px;min-height:18px;}
+  .readyBadge{display:inline-block;background:#2fbf62;color:#fff;border-radius:8px;padding:1px 8px;font-size:10px;margin-left:6px;}
+
+  /* ===== SLOT BUY BUTTON ===== */
+  #btnBuySlot{background:linear-gradient(180deg,#7fd6ff,#3aa0d6);border:2px solid #00c8ff;border-radius:10px;padding:5px 12px;font-size:11px;color:#fff;font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(58,160,214,.4);}
+  #btnBuySlot:hover{filter:brightness(1.15);}
+</style>
+
+</head>
+<body>
+<div id="root">
+  <canvas id="game"></canvas>
+  <div id="floatText"></div>
+  <div id="growTooltip" class="hidden"></div>
+
+  <!-- HEALTH BAR -->
+  <div id="healthBar" class="hidden">
+    <div class="hearts" id="heartIcons"></div>
+    <span class="hpText" id="hpText">10/10</span>
+  </div>
+
+  <!-- DEATH SCREEN -->
+  <div id="deathScreen">
+    <h2>💀 ÖLDÜN!</h2>
+    <p id="deathMsg">Lavda can verdin...</p>
+    <div id="deathCountdown">5</div>
+    <p style="font-size:14px;color:#aaa;margin-top:10px">Saniye içinde yeniden doğuyorsun</p>
+  </div>
+
+  <!-- TRADE MODAL -->
+  <div id="tradeModal">
+    <div id="tradePanel">
+      <h3>🔄 Takas</h3>
+      <div class="tradeSides">
+        <div class="tradeSide">
+          <h4 id="tradeSideA">Sen</h4>
+          <div class="tradeItems" id="tradeItemsA"></div>
+          <button class="green" id="btnAddTradeItem" style="width:100%;margin-top:8px;font-size:11px">+ Eşya Ekle</button>
+        </div>
+        <div class="tradeSide">
+          <h4 id="tradeSideB">Karşı Taraf</h4>
+          <div class="tradeItems" id="tradeItemsB"></div>
+        </div>
+      </div>
+      <div class="tradeStatus" id="tradeStatus">Eşyaları seç ve hazır olunca onayla.</div>
+      <div class="tradeBtns">
+        <button class="green" id="btnTradeReady">✅ Hazırım</button>
+        <button class="danger" id="btnTradeCancel">❌ İptal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRADE INCOMING REQUEST -->
+  <div id="tradeRequestPopup" class="hidden" style="position:absolute;bottom:80px;right:12px;z-index:70;background:linear-gradient(180deg,#1a2040,#0d1128);border:2px solid #3aa0d6;border-radius:12px;padding:12px 16px;color:#fff;font-size:13px;box-shadow:0 0 20px rgba(58,160,214,.4);min-width:220px;">
+    <div id="tradeRequestText" style="margin-bottom:8px">Takas isteği...</div>
+    <div style="display:flex;gap:6px">
+      <button class="green" id="btnAcceptTrade" style="flex:1;font-size:11px">Kabul Et</button>
+      <button class="danger" id="btnDeclineTrade" style="flex:1;font-size:11px">Reddet</button>
+    </div>
+  </div>
+
+
+  <div class="overlay" id="mainMenu">
+    <div class="panel">
+      <h1>DIRTOPIA</h1>
+      <div class="sub">Growtopia mekaniğine göre yeniden yazıldı</div>
+      <button id="btnPlay">Oyuna Gir</button>
+      <button class="secondary" id="btnHow">Nasıl Oynanır</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="loginScreen">
+    <div class="panel">
+      <h2>Hesap Girişi / Kayıt</h2>
+      <div class="sub">Kalıcı hesabınla giriş yap veya yeni hesap oluştur.</div>
+      <input id="loginName" placeholder="GrowID (Kullanıcı Adı)">
+      <input id="loginPass" type="password" placeholder="Şifre">
+      <div style="margin-top:8px;display:flex;gap:6px">
+        <button id="btnLogin" class="fire" style="flex:1">Giriş Yap</button>
+        <button id="btnRegister" class="green" style="flex:1">Kayıt Ol</button>
+      </div>
+      <button class="secondary" id="btnBackMenu" style="width:100%;margin-top:6px">Geri</button>
+      <div id="loginMsg" style="color:#ffb3b3;font-size:12px;margin-top:6px;"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="worldScreen">
+    <div class="panel" style="width:340px">
+      <h2>Dünya Seç</h2>
+      <input id="worldName" placeholder="WORLD ADI (örn: DIRT1)">
+      <button id="btnEnterWorld">Gir / Oluştur</button>
+      <div class="sub" style="margin-top:10px">Aktif dünyalar:</div>
+      <div id="worldList" style="max-height:150px;overflow-y:auto"></div>
+      <div style="margin-top:8px;font-size:12px">💎 Gemlerin: <b id="gemPreview">0</b></div>
+      <button class="secondary" id="btnLogout" style="margin-top:8px">Çıkış Yap</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="friendsModal">
+    <div class="panel" style="width:340px">
+      <h2>👥 Arkadaş Listesi</h2>
+      <div class="sub">Çevrimiçi ve çevrimdışı arkadaşların:</div>
+      <div id="friendsList" style="max-height:180px;overflow-y:auto;margin:8px 0"></div>
+      <div style="display:flex;gap:6px">
+        <input id="friendAddInput" placeholder="Kullanıcı adı" style="flex:1;margin:0">
+        <button class="green" id="btnFriendAddSubmit" style="margin:0">Ekle</button>
+      </div>
+      <button class="secondary" id="btnCloseFriends" style="width:100%;margin-top:10px">Kapat</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pauseMenu">
+    <div class="panel">
+      <h2>Menü</h2>
+      <div class="sub" id="pauseWorldName">Dünya: -</div>
+      <button id="btnResume">Devam Et</button>
+      <button id="btnRespawn">🔄 Respawn</button>
+      <button id="btnOpenLock">🔒 Erişim Listesi</button>
+      <button class="danger" id="btnExitWorld">Dünyadan Çık</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="lockModal">
+    <div class="panel" style="width:320px">
+      <h2>🔒 Erişim Listesi</h2>
+      <div class="sub" id="lockStatusText">-</div>
+      <div id="accessList"></div>
+      <input id="accessAdd" placeholder="Eklenecek kullanıcı adı">
+      <button class="green" id="btnAccessAdd" style="width:100%">Ekle</button>
+      <button class="secondary" id="btnCloseLock" style="width:100%;margin-top:8px">Kapat</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="storeModal">
+    <div class="panel" style="width:500px">
+      <h2>🛒 Galaxy Mağazası</h2>
+      <div class="sub">Gemin: <b id="storeGems">0</b> 💎</div>
+      <div id="storeTabs">
+        <div class="active" data-st="all">Tümü</div>
+        <div data-st="packs">🎁 Paketler</div>
+        <div data-st="functional">🔒 İşlevsel</div>
+        <div data-st="mythic">⚡ Mitolojik</div>
+        <div data-st="wings">🦅 Kanatlar</div>
+      </div>
+      <div id="storeList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:280px;overflow-y:auto;padding:4px;"></div>
+      <button class="secondary" id="btnCloseStore" style="width:100%;margin-top:10px">Kapat</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="dropQtyModal">
+    <div class="panel" style="width:280px;text-align:center">
+      <h2 id="dropQtyTitle">Kaç tane bırakmak istiyorsun?</h2>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:14px 0">
+        <button class="secondary" id="dropQtyMin" style="padding:8px 12px">1</button>
+        <input id="dropQtyInput" type="number" min="1" value="1" style="width:90px;text-align:center;font-size:18px">
+        <button class="secondary" id="dropQtyMax" style="padding:8px 12px">Max</button>
+      </div>
+      <input id="dropQtySlider" type="range" min="1" value="1" style="width:100%">
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="secondary" id="dropQtyCancel" style="flex:1">İptal</button>
+        <button class="green" id="dropQtyConfirm" style="flex:1">Bırak</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="latheModal">
+    <div class="panel" style="width:420px">
+      <h2>⚙️ Torna Makinesi</h2>
+      <div class="sub">Gelişmiş eşyalar için gerekli malzemeleri topla, üret butonuna bas.</div>
+      <div id="latheRecipes" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow-y:auto"></div>
+      <button class="secondary" id="btnLatheClose" style="width:100%;margin-top:10px">Kapat</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="shopModal">
+    <div class="panel" style="width:440px">
+      <h2 id="shopTitle">🏪 Satış Standı</h2>
+      <div class="sub" id="shopSub">Ürünleri incele ve satın al.</div>
+      <div id="shopListings" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto"></div>
+      <div id="shopManageBox" class="hidden" style="margin-top:10px;border-top:1px solid #444;padding-top:10px">
+        <div class="sub">Yeni ürün ekle / stok tamamla:</div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <select id="shopAddItemSelect" style="flex:1"></select>
+          <input id="shopAddPrice" type="number" min="0" placeholder="Fiyat" style="width:70px">
+          <input id="shopAddQty" type="number" min="1" value="1" placeholder="Adet" style="width:60px">
+        </div>
+        <button class="fire" id="btnShopAddListing" style="width:100%;margin-top:6px">Ekle / Stok Yükle</button>
+      </div>
+      <button class="secondary" id="btnShopClose" style="width:100%;margin-top:10px">Kapat</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="npcDialogModal">
+    <div class="panel" style="width:380px">
+      <h2>🤖 NPC</h2>
+      <div class="sub" id="npcDialogText">...</div>
+      <div id="npcQuestButtons" class="hidden" style="display:flex;gap:8px;margin-top:10px">
+        <button class="fire" id="btnQuestAccept" style="flex:1">Görevi Kabul Et</button>
+        <button class="secondary" id="btnQuestDecline" style="flex:1">Vazgeç</button>
+      </div>
+      <button class="secondary" id="btnNpcDialogClose" style="width:100%;margin-top:10px">Kapat</button>
+    </div>
+  </div>
+
+  <!-- Görev HUD'u: ekranı kaplamaz, üst köşede küçük bir panel olarak durur -->
+  <div class="hidden" id="missionHud" style="position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(10,14,20,0.85);border:1px solid #39ff6a;border-radius:8px;padding:8px 16px;color:#eafff0;font-family:'Trebuchet MS';font-size:13px;text-align:center;pointer-events:none;">
+    <div id="missionHudTitle" style="font-weight:bold;color:#39ff6a">Görev</div>
+    <div id="missionHudStatus">...</div>
+  </div>
+
+  <div class="overlay hidden" id="cableGameModal">
+    <div class="panel" style="width:420px">
+      <h2>☎️ Kablo Bağlama</h2>
+      <div class="sub">Telefon kulübelerine giderek her birini bağla.</div>
+      <div id="cableBoothList" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto"></div>
+      <button class="secondary" id="btnCableGameClose" style="width:100%;margin-top:10px">Kapat (görev devam eder)</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="missionEndModal">
+    <div class="panel" style="width:360px;text-align:center">
+      <h2 id="missionEndTitle">Görev Tamamlandı</h2>
+      <div class="sub" id="missionEndText">...</div>
+      <button class="fire" id="btnMissionEndClose" style="width:100%;margin-top:10px">Tamam</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="craftModal">
+    <div class="panel" style="width:400px">
+      <h2>🔀 Birleştir (Craft)</h2>
+      <div class="sub">2 veya 3 eşya seç, tarife uyuyorsa birleşsin. Elementler, cevherler ve alaşımlar kullanılabilir.</div>
+      <div id="craftGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-height:220px;overflow-y:auto;padding:4px;"></div>
+      <div id="craftSelected" style="margin:10px 0;font-size:12px;min-height:20px;color:#ffcf7a"></div>
+      <div style="display:flex;gap:8px">
+        <button class="secondary" id="btnCraftClose" style="flex:1">Kapat</button>
+        <button class="fire" id="btnCraftConfirm" style="flex:1">Birleştir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="playerCardModal">
+    <div class="panel" style="width:260px;text-align:center">
+      <h2 id="pcName">Oyuncu</h2>
+      <div class="sub" id="pcStatus">Bu dünyada</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+        <button class="fire" id="pcTrade">🔁 Trade İsteği Gönder</button>
+        <button class="green" id="pcAddFriend">➕ Arkadaş Ekle</button>
+        <button class="secondary" id="pcClose">Kapat</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="tradeModal">
+    <div class="panel" style="width:520px">
+      <h2>🔁 Trade — <span id="tradeOtherName">-</span></h2>
+      <div style="display:flex;gap:14px">
+        <div style="flex:1">
+          <div class="sub">Senin teklifin</div>
+          <div id="tradeMySlots" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;min-height:80px;background:rgba(255,255,255,.05);border-radius:8px;padding:6px"></div>
+        </div>
+        <div style="flex:1">
+          <div class="sub"><span id="tradeOtherName2">Karşı taraf</span>'ın teklifi</div>
+          <div id="tradeTheirSlots" style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;min-height:80px;background:rgba(255,255,255,.05);border-radius:8px;padding:6px"></div>
+        </div>
+      </div>
+      <div class="sub" style="margin-top:10px">Eklemek için envanterinden bir eşya seç, sonra aşağıdaki listeden tıkla:</div>
+      <div id="tradeInvPicker" style="display:grid;grid-template-columns:repeat(9,1fr);gap:4px;max-height:110px;overflow-y:auto;padding:4px;background:rgba(255,255,255,.04);border-radius:8px"></div>
+      <div id="tradeStatusText" style="margin:10px 0;font-size:12px;color:#ffcf7a"></div>
+      <div style="display:flex;gap:8px">
+        <button class="danger" id="btnTradeCancel" style="flex:1">İptal</button>
+        <button class="green" id="btnTradeReady" style="flex:1">Onayla ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="tradeReviewModal">
+    <div class="panel" style="width:420px;text-align:center">
+      <h2>Son Onay</h2>
+      <div class="sub">İki taraf da "Do The Trade" derse takas gerçekleşir.</div>
+      <div style="display:flex;gap:14px;text-align:left">
+        <div style="flex:1"><div class="sub">Sen vereceksin:</div><div id="reviewMine" style="font-size:12px"></div></div>
+        <div style="flex:1"><div class="sub">Sen alacaksın:</div><div id="reviewTheirs" style="font-size:12px"></div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="danger" id="btnReviewCancel" style="flex:1">İptal</button>
+        <button class="fire" id="btnReviewConfirm" style="flex:1">Do The Trade!</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="hidden">
+    <div class="hudBox">💎 <span id="gemCount">0</span></div>
+    <div class="hudBox" id="hpBox">❤️❤️❤️❤️❤️</div>
+  </div>
+  <div id="shopBtnWrap" class="hidden"><button id="btnShopQuick">🛒 Market</button></div>
+  <div id="lockInfo" class="hidden"></div>
+  <div id="topbar" class="hidden">
+    <button id="btnFriendsToggle" class="green">👥 Arkadaşlar</button>
+    <button id="btnChatToggle">💬 Chat</button>
+    <button id="btnPauseOpen">☰ Menü</button>
+  </div>
+
+  <div id="chatWrap">
+    <div id="chatPanel" style="position:relative">
+      <button id="chatClose">✕</button>
+      <div id="chatTabs"><div class="active" data-c="world">World</div><div data-c="global">Global</div></div>
+      <div id="chatLog"></div>
+      <input id="chatInput" maxlength="140" placeholder="mesaj yaz (max 140), Enter'a bas...">    </div>
+  </div>
+
+  <div id="invBar" class="hidden"></div>
+  <div id="fullInv" class="hidden">
+    <div id="invHeader"><span>🎒 Envanter</span><button id="btnCloseInv" style="padding:3px 8px;font-size:11px">X</button></div>
+    <div id="invTabs"><div class="active" data-t="all">Tümü</div><div data-t="worn">Giyilenler</div></div>
+    <div id="invBody">
+      <div id="invGrid"></div>
+      <div id="invActions">
+        <button class="green" id="btnEquip">👕 Giy/Çıkar</button>
+        <button class="fire" id="btnCraft">🔀 Birleştir</button>
+        <button class="secondary" id="btnDrop">⬇️ Bırak</button>
+        <button class="danger" id="btnTrash">🗑️ Yok Et</button>
+      </div>
+    </div>
+    <div id="itemDesc">Bir eşyaya tıkla, bilgisini gör.</div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   DIRTOPIA v3 — Growtopia mekaniğine sadık tek dosyalık prototip
+========================================================= */
+const API_BASE = window.location.origin;
+
+/* ---------- Ses sistemi (sıfır dosya, tamamen kod ile sentezlenir) ---------- */
+const SoundEngine = (()=>{
+  let ctx=null, master=null, musicGain=null, sfxGain=null, musicNodes=[], musicTimer=null, musicOn=false;
+  function ensureCtx(){
+    if(ctx) return ctx;
+    ctx = new (window.AudioContext||window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value=1; master.connect(ctx.destination);
+    musicGain = ctx.createGain(); musicGain.gain.value=0.22; musicGain.connect(master);
+    sfxGain = ctx.createGain(); sfxGain.gain.value=0.5; sfxGain.connect(master);
+    return ctx;
+  }
+  function tone(freq, dur, opts={}){
+    ensureCtx();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=opts.type||'square'; o.frequency.setValueAtTime(freq, ctx.currentTime);
+    if(opts.slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(1,opts.slideTo), ctx.currentTime+dur);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(opts.vol||0.35, ctx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+dur);
+    o.connect(g); g.connect(sfxGain);
+    o.start(); o.stop(ctx.currentTime+dur+0.02);
+  }
+  function noiseBurst(dur, opts={}){
+    ensureCtx();
+    const bufSize=ctx.sampleRate*dur;
+    const buf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) data[i]=(Math.random()*2-1)*(1-i/bufSize);
+    const src=ctx.createBufferSource(); src.buffer=buf;
+    const filt=ctx.createBiquadFilter(); filt.type=opts.filterType||'lowpass'; filt.frequency.value=opts.freq||1800;
+    const g=ctx.createGain(); g.gain.value=opts.vol||0.3;
+    src.connect(filt); filt.connect(g); g.connect(sfxGain);
+    src.start();
+  }
+  const SFX = {
+    jump: ()=> tone(320,0.16,{type:'square',slideTo:520,vol:0.25}),
+    hit: ()=> noiseBurst(0.06,{freq:1200,vol:0.22}),
+    break: ()=> { noiseBurst(0.12,{freq:900,vol:0.3}); tone(140,0.1,{type:'square',slideTo:60,vol:0.2}); },
+    place: ()=> tone(220,0.09,{type:'square',slideTo:260,vol:0.22}),
+    button: ()=> tone(500,0.06,{type:'square',vol:0.18}),
+    plant: ()=> tone(380,0.14,{type:'triangle',slideTo:620,vol:0.22}),
+    harvest: ()=> { tone(500,0.1,{type:'triangle',slideTo:800,vol:0.25}); setTimeout(()=>tone(700,0.12,{type:'triangle',slideTo:1000,vol:0.2}),80); },
+    gem: ()=> { tone(900,0.08,{type:'sine',vol:0.22}); setTimeout(()=>tone(1300,0.12,{type:'sine',vol:0.2}),60); },
+    pickup: ()=> tone(500,0.08,{type:'sine',slideTo:700,vol:0.2}),
+    equip: ()=> { tone(400,0.08,{type:'triangle',vol:0.2}); setTimeout(()=>tone(600,0.1,{type:'triangle',vol:0.2}),70); },
+    lock: ()=> { tone(200,0.1,{type:'square',vol:0.25}); setTimeout(()=>tone(150,0.16,{type:'square',slideTo:90,vol:0.22}),90); },
+    merge: ()=> { tone(600,0.08,{type:'sine',vol:0.2}); setTimeout(()=>tone(900,0.08,{type:'sine',vol:0.2}),70); setTimeout(()=>tone(1300,0.14,{type:'sine',vol:0.22}),140); },
+    error: ()=> tone(150,0.15,{type:'sawtooth',slideTo:90,vol:0.2}),
+    trade: ()=> { tone(700,0.1,{type:'sine',vol:0.25}); setTimeout(()=>tone(900,0.1,{type:'sine',vol:0.25}),100); setTimeout(()=>tone(1100,0.14,{type:'sine',vol:0.28}),200); },
+    buy: ()=> { tone(500,0.07,{type:'square',vol:0.2}); setTimeout(()=>tone(750,0.1,{type:'square',vol:0.22}),80); },
+    hurt: ()=> { tone(180,0.16,{type:'sawtooth',vol:0.3}); setTimeout(()=>tone(120,0.18,{type:'sawtooth',vol:0.25}),90); },
+  };
+  function play(name){ try{ ensureCtx(); if(ctx.state==='suspended') ctx.resume(); if(SFX[name]) SFX[name](); }catch(e){} }
+
+  // basit, sürekli döngülü menü müziği (arpej + bas) — dosya yok, oscillator dizisi
+  const MELODY = [0,3,7,10,7,3,12,10, 0,3,7,10,7,3,7,3]; // pentatonik-ish aralık, yarı-ton cinsinden
+  const BASE_FREQ = 174.6; // F3
+  let step=0;
+  function musicStep(){
+    if(!musicOn) return;
+    ensureCtx();
+    const semis = MELODY[step % MELODY.length];
+    const freq = BASE_FREQ*Math.pow(2, semis/12);
+    tone(freq, 0.22, {type:'triangle', vol:0.14});
+    if(step%4===0) tone(BASE_FREQ/2, 0.3, {type:'sine', vol:0.16});
+    step++;
+    musicTimer=setTimeout(musicStep, 220);
+  }
+  function startMusic(){ if(musicOn) return; musicOn=true; ensureCtx(); if(ctx.state==='suspended') ctx.resume(); step=0; musicStep(); }
+  function stopMusic(){ musicOn=false; if(musicTimer) clearTimeout(musicTimer); musicTimer=null; }
+  function setVolumes(musicVol, sfxVol){ ensureCtx(); musicGain.gain.value=musicVol; sfxGain.gain.value=sfxVol; }
+  return { play, startMusic, stopMusic, setVolumes, ensureCtx };
+})();
+function playSfx(name){ SoundEngine.play(name); }
+// tarayıcılar ilk kullanıcı etkileşimine kadar sesi kilitler; ilk tıklamada aç
+document.addEventListener('click', ()=>{ SoundEngine.ensureCtx(); if(!gameRunning) SoundEngine.startMusic(); }, {once:true});
+let authToken = null;
+let socket = null;
+
+async function apiPost(path, body, useAuth){
+  const headers = {'Content-Type':'application/json'};
+  if(useAuth && authToken) headers['Authorization'] = 'Bearer '+authToken;
+  const res = await fetch(API_BASE+path, {method:'POST', headers, body: JSON.stringify(body||{})});
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Sunucu hatası');
+  return data;
+}
+async function apiGet(path){
+  const res = await fetch(API_BASE+path, {headers: authToken?{Authorization:'Bearer '+authToken}:{}});
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error || 'Sunucu hatası');
+  return data;
+}
+// socket olayını Promise'e çevirip await edilebilir yapan yardımcı (ack tabanlı)
+function emitAsync(event, payload){
+  return new Promise((resolve, reject)=>{
+    if(!socket || !socket.connected){ reject(new Error('Sunucuya bağlı değilsin.')); return; }
+    socket.emit(event, payload, (resp)=>{
+      if(resp && resp.error) reject(new Error(resp.error));
+      else resolve(resp);
+    });
+  });
+}
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+const $=id=>document.getElementById(id);
+function show(id){ $(id).classList.remove('hidden'); }
+function hide(id){ $(id).classList.add('hidden'); }
+
+/* ---------- Item / Blok tanımları ---------- */
+const ITEMS = {
+  dirt:      {name:'Toprak', type:'block', hp:3, palette:[0x8a6033,0x6b4a2f,0x4d3520], desc:'Sıradan toprak. 3 vuruşta kırılır. Gem ve bazen tohum düşürür.', gemDrop:[1,3], seedDropChance:0.18, seedDrop:'seed_pepper'},
+  grassdirt: {name:'Çimen Toprağı', type:'block', hp:3, palette:[0x8a6033,0x6b4a2f,0x4d3520], grassTop:true, desc:'Üzeri çimenli toprak. Gem ve bazen tohum verir.', gemDrop:[1,3], seedDropChance:0.22, seedDrop:'seed_pepper'},
+  cave:      {name:'Kaya', type:'block', hp:5, palette:[0x7b8290,0x5a5f68,0x3d4148], cracked:true, desc:'Sağlam kaya, 5 vuruş ister. Daha fazla gem verir.', gemDrop:[2,5], seedDropChance:0.1, seedDrop:'seed_rare'},
+  crystal:   {name:'Kristal Cevher', type:'block', hp:6, palette:[0x8fd6ff,0x4fb3e8,0x2a6ba8], sparkle:true, desc:'Nadir parıldayan kristal damarı. Kırınca bol gem ve nadir tohum verir.', gemDrop:[4,9], seedDropChance:0.35, seedDrop:'seed_rare'},
+  bedrock:   {name:'Sağlam Blok', type:'block', hp:9999, palette:[0x33373f,0x24272d,0x15171b], hazard:true, unbreak:true, desc:'Kırılamaz, dünyanın sınırı.'},
+  worldlock: {name:'World Lock', type:'lock', hp:2, palette:[0xffe066,0xffcc33,0xb8860b], special:'lock', desc:'Envanterinden dünyaya yerleştirince tüm dünyayı kilitler. Sahibin adı yeşil görünür.'},
+  fist:      {name:'Yumruk', type:'tool', color:0xd9b48f, desc:'Blok kırmak için elini kullan. Tıklayıp basılı tut, her vuruşta blok biraz daha kırılır.'},
+  wrench:    {name:'Wrench', type:'tool', color:0xc7c7d1, desc:'World Lock ayarlarını açmak veya başka oyunculara tıklayıp trade/arkadaş eklemek için kullan.'},
+  wings_basic:{name:'Temel Kanat', type:'wings', color:0x9be7ff, wearable:true, desc:'Giyersen havada ikinci kez zıplayabilirsin (çift zıplama). Giyiliyken bırakılamaz/yok edilemez.'},
+  wings_fire:{name:'Alev Kanadı', type:'wings', wingStyle:'fire', color:0xff5a1a, color2:0xffcf3a, wearable:true, desc:'Ateşten kanatlar. Çift zıplama sağlar.'},
+  wings_crystal:{name:'Kristal Kanat', type:'wings', wingStyle:'crystal', color:0x9dd8ff, color2:0xc99dff, wearable:true, desc:'Kristal berraklığında kanatlar. Çift zıplama sağlar.'},
+  wings_shadow:{name:'Gölge Kanadı', type:'wings', wingStyle:'shadow', color:0x3a2a4a, color2:0x1a1020, wearable:true, desc:'Yarasa tarzı karanlık kanatlar. Çift zıplama sağlar.'},
+  seed_pepper:{name:'Biber Tohumu', type:'seed', color:0xff5a3d, growSeconds:16, rarity:1, fruit:'fruit_pepper', desc:'Hızlı büyüyen ucuz tohum.'},
+  seed_rare: {name:'Nadir Tohum', type:'seed', color:0xba68ff, growSeconds:45, rarity:6, fruit:'fruit_rare', desc:'Nadir, uzun sürede büyür, çok gem verir.'},
+  fruit_pepper:{name:'Biber', type:'fruit', color:0xff5a3d, desc:'Biber tohumundan elde edilen meyve.'},
+  fruit_rare:{name:'Nadir Meyve', type:'fruit', color:0xba68ff, desc:'Nadir tohumdan elde edilen değerli meyve.'},
+  gem:       {name:'Gem', type:'currency', color:0xff4d6d, desc:'Ana para birimi.'},
+  gem_small: {name:'Gem', type:'currency', color:0xff4d6d, desc:'1 değerinde.', tier:1},
+  gem_medium:{name:'Gem', type:'currency', color:0x4da6ff, desc:'5 değerinde.', tier:2},
+  gem_large: {name:'Gem', type:'currency', color:0xb84dff, desc:'10 değerinde.', tier:3},
+
+  // element ağacı (birleştirme malzemesi)
+  elem_dirt:{name:'Toprak Özü', type:'element', color:0x8b5a2b, desc:'Katman 1 element.'},
+  elem_water:{name:'Su Özü', type:'element', color:0x4ac1ff, desc:'Katman 1 element.'},
+  elem_stone:{name:'Taş Özü', type:'element', color:0x8a8a8a, desc:'Katman 1 element.'},
+  elem_lava:{name:'Lav Özü', type:'element', color:0xff5a1a, desc:'Katman 1 element.'},
+  elem_sand:{name:'Kum Özü', type:'element', color:0xe8d18a, desc:'Katman 1 element.'},
+  elem_wood:{name:'Tahta Özü', type:'element', color:0x9a6b3a, desc:'Toprak + Su.'},
+  elem_volcanic:{name:'Volkanik Taş Özü', type:'element', color:0x5a3a3a, desc:'Taş + Lav.'},
+  elem_glass:{name:'Cam Özü', type:'element', color:0xaeeaff, desc:'Kum + Lav.'},
+  elem_iron:{name:'Demir Blok Özü', type:'element', color:0xc7c7d1, desc:'Taş + Volkanik Taş.'},
+  elem_brick:{name:'Tuğla Özü', type:'element', color:0xb04a2f, desc:'Toprak + Lav.'},
+  elem_coal:{name:'Kömür Özü', type:'element', color:0x2b2b2b, desc:'Toprak + Tahta.'},
+  elem_gold:{name:'Altın Blok Özü', type:'element', color:0xffd93a, desc:'Demir + Lav.'},
+  elem_crystal:{name:'Kristal Özü', type:'element', color:0xd88bff, desc:'Cam + Volkanik Taş.'},
+  elem_gunpowder:{name:'Barut Bloğu Özü', type:'element', color:0x3a2a2a, desc:'Kömür + Lav.'},
+  elem_neon:{name:'Sarı Neon Blok Özü', type:'element', color:0xfff23a, desc:'Cam + Altın.'},
+
+  // metalurji ağacı
+  seed_stone_common:{name:'Taş Tohumu', type:'seed', color:0x9a9aa2, growSeconds:10, rarity:1, fruit:'ore_stone', desc:'Bol bulunur.'},
+  seed_crystal_common:{name:'Kristal Blok Tohumu', type:'seed', color:0xd88bff, growSeconds:20, rarity:3, fruit:'ore_crystal', desc:'Orta nadirlikte.'},
+  seed_copper:{name:'Bakır Tohumu', type:'seed', color:0xd6793a, growSeconds:30, rarity:4, fruit:'ore_copper', desc:'Seed Pack\'ten çıkar.'},
+  seed_iron:{name:'Demir Tohumu', type:'seed', color:0xb7b7c0, growSeconds:30, rarity:4, fruit:'ore_iron', desc:'Seed Pack\'ten çıkar.'},
+  seed_aluminum:{name:'Alüminyum Tohumu', type:'seed', color:0xd8d8e0, growSeconds:40, rarity:6, fruit:'ore_aluminum', desc:'Seed Pack\'ten çıkar, nadir.'},
+  seed_gold:{name:'Altın Tohumu', type:'seed', color:0xffd93a, growSeconds:50, rarity:8, fruit:'ore_gold', desc:'Seed Pack\'ten çıkar, çok nadir.'},
+  seed_coal:{name:'Kömür Tohumu', type:'seed', color:0x2b2b2b, growSeconds:25, rarity:3, fruit:'ore_coal', desc:'Çelik yapımında kullanılır.'},
+  ore_stone:{name:'Taş Cevheri', type:'material', color:0x9a9aa2, desc:'Ham malzeme.'},
+  ore_crystal:{name:'Kristal Cevheri', type:'material', color:0xd88bff, desc:'Ham malzeme.'},
+  ore_copper:{name:'Bakır Cevheri', type:'material', color:0xd6793a, desc:'Ham malzeme.'},
+  ore_iron:{name:'Demir Cevheri', type:'material', color:0xb7b7c0, desc:'Ham malzeme.'},
+  ore_aluminum:{name:'Alüminyum Cevheri', type:'material', color:0xd8d8e0, desc:'Ham malzeme.'},
+  ore_gold:{name:'Altın Cevheri', type:'material', color:0xffd93a, desc:'Ham malzeme.'},
+  ore_coal:{name:'Kömür Cevheri', type:'material', color:0x2b2b2b, desc:'Ham malzeme.'},
+  alloy_steel:{name:'Çelik', type:'material', isAlloy:true, color:0x8a8a99, desc:'Demir + Kömür birleşimi.'},
+  alloy_alumbronze:{name:'Alüminyum Bronzu', type:'material', isAlloy:true, color:0xc98a4a, desc:'Bakır + Alüminyum birleşimi.'},
+  alloy_duralumin:{name:'Duralüminyum', type:'material', isAlloy:true, color:0xb8c4d0, desc:'Alüminyum + Bakır + Demir birleşimi.'},
+  alloy_processor:{name:'Elektronik İşlemci', type:'material', isAlloy:true, color:0xffd93a, desc:'Altın + Bakır birleşimi.'},
+  item_buzzsaw:{name:'Döner Testere Blok', type:'block', hp:8, palette:[0xa8a8b2,0x8a8a99,0x5a5a63], desc:'Çelik + Demir + Bakır ile torna makinesinde üretilir.'},
+  item_gun:{name:'Silah', type:'tool', color:0x7a7a85, desc:'Çelik + Duralüminyum ile üretilir.'},
+  item_robot_armor:{name:'Robot Zırh', type:'wings', color:0xb8c4d0, wearable:true, desc:'Duralüminyum + Çelik + Altın ile üretilir.'},
+  item_metal_glove:{name:'Metal Eldiven', type:'tool', color:0x8a8a99, desc:'Çelik + Alüminyum Bronzu ile üretilir.'},
+  lathe:{name:'Torna Bloğu', type:'block', hp:6, palette:[0x8a8a95,0x6a6a75,0x4a4a52], desc:'Dünyaya yerleştir, yanına gidip Torna Makinesi arayüzünden gelişmiş eşyalar üret.'},
+  asphalt:{name:'Asfalt', type:'block', hp:4, palette:[0x3a3a42,0x2a2a30,0x1a1a1e], desc:'Matrix dünyasının zemini.', gemDrop:[1,2]},
+  matrix_chair:{name:'Matrix Sandalyesi', type:'block', hp:5, palette:[0x1a1a1e,0x0d0d10,0x000000], desc:'Kilitli bir dünyaya yerleştir. Yanına gidip /sit yazarak Matrix dünyasına geçiş yap.'},
+  shop_stand:{name:'Satış Standı', type:'block', hp:5, palette:[0x7a5a3a,0x5a3f28,0x3a2818], desc:'Dünyana yerleştir, sağ tıkla dükkanını yönet. Diğer oyuncular sağ tıklayıp senden alışveriş yapabilir.'},
+  lava:      {name:'Lav', type:'block', hp:1, palette:[0xff5500,0xff3300,0xcc2200], hazard:true, unbreak:true, desc:'Dokunursan zarar alırsın! Geri fırlarsın.'},
+  diamondlock:{name:'Diamond Lock', type:'lock', hp:2, palette:[0x44aaff,0x2288dd,0x0066bb], special:'lock', desc:'100 World Lock = 1 Diamond Lock. Çok değerli!'},
+  bluegemlock:{name:'Blue Gem Lock', type:'lock', hp:2, palette:[0x9966ff,0x7744cc,0x552299], special:'lock', desc:'100 Diamond Lock = 1 BGL. En yüksek para birimi!'},
+  ladder:    {name:'Merdiven', type:'block', hp:2, palette:[0x8b7355,0x6b5535,0x4b3515], isPassable:true, isLadder:true, desc:'Altından üstüne zıplanabilir; tırmanma desteği.'},
+  metal_door:{name:'Metal Kapı', type:'block', hp:4, palette:[0x889aaa,0x667788,0x445566], isPassable:true, isDoor:true, desc:'Geçilebilir sıkı metal kapı.'},
+  sliding_door:{name:'Sürgülü Kapı', type:'block', hp:4, palette:[0xaacce0,0x88aacc,0x5588aa], isPassable:true, isDoor:true, desc:'Yaklaşınca otomatik açılan cam kapı.'},
+  brick:     {name:'Tuğla Blok', type:'block', hp:4, palette:[0xb04a2f,0x8a3422,0x5e2014], desc:'Sağlam tuğla.'},
+  concrete:  {name:'Beton Blok', type:'block', hp:5, palette:[0x9a9aa0,0x7a7a80,0x5a5a60], desc:'Beton yapı malzemesi.'},
+  wood_block:{name:'Ahşap Blok', type:'block', hp:3, palette:[0xc19a6b,0x9a7240,0x6b4e2c], desc:'Ahşap yapı malzemesi.'},
+  pack_ssp:  {name:'Small Seed Pack (SSP)', type:'pack', color:0xffd93a, desc:'Açınca temel tohumlar çıkar.'},
+  pack_lsp:  {name:'Large Seed Pack (LSP)', type:'pack', color:0xff9a3a, desc:'Nadir ve birleşim tohumları içerir.'},
+  pack_sip:  {name:'Small Item Pack (SIP)', type:'pack', color:0x4ac1ff, desc:'Giysiler ve araçlar çıkar.'},
+  pack_wearables:{name:'Giyim Paketi', type:'pack', color:0xd88bff, desc:'Rastgele şik giysiler verir.'},
+  weapon_trident:{name:'Poseidon Trident', type:'tool', color:0xffd700, desc:'Altın üçlü mızrak. Harika görünüm!'},
+  weapon_lightning:{name:'Zeus Yıldırımı', type:'tool', color:0xffff00, desc:'Gökyüzü lordu’nun yıldırımı. Elektrikli efekt!'},
+};
+const STORE_ITEMS = [
+  // --- PAKETLER ---
+  {id:'pack_ssp', price:20, qty:1, cat:'packs', label:'Small Seed Pack (SSP)'},
+  {id:'pack_lsp', price:75, qty:1, cat:'packs', label:'Large Seed Pack (LSP)'},
+  {id:'pack_sip', price:30, qty:1, cat:'packs', label:'Small Item Pack (SIP)'},
+  {id:'pack_wearables', price:120, qty:1, cat:'packs', label:'Giyim Paketi'},
+  // --- İŞLEVSEL & KİLİTLER ---
+  {id:'worldlock', price:150, qty:1, cat:'functional', label:'World Lock'},
+  {id:'matrix_chair', price:500, qty:1, cat:'functional', label:'Matrix Sandalyesi'},
+  {id:'lathe', price:300, qty:1, cat:'functional', label:'Torna Makinası'},
+  {id:'shop_stand', price:400, qty:1, cat:'functional', label:'Satış Standı'},
+  {id:'metal_door', price:50, qty:2, cat:'functional', label:'Metal Kapı x2'},
+  {id:'sliding_door', price:90, qty:2, cat:'functional', label:'Sürgülü Kapı x2'},
+  {id:'ladder', price:15, qty:10, cat:'functional', label:'Merdiven x10'},
+  // --- MİTOLOJİK ---
+  {id:'weapon_trident', price:800, qty:1, cat:'mythic', label:'Poseidon Trident'},
+  {id:'weapon_lightning', price:1200, qty:1, cat:'mythic', label:'Zeus Yıldırımı'},
+  // --- KANATLAR ---
+  {id:'wings_basic', price:100, qty:1, cat:'wings', label:'Temel Kanat'},
+  {id:'wings_fire', price:220, qty:1, cat:'wings', label:'Alev Kanadı'},
+  {id:'wings_crystal', price:220, qty:1, cat:'wings', label:'Kristal Kanat'},
+  {id:'wings_shadow', price:260, qty:1, cat:'wings', label:'Gölge Kanadı'},
+];
+
+/* ---------- PixiJS kurulum ---------- */
+const app = new PIXI.Application({ view: document.getElementById('game'), resizeTo: window, backgroundColor: 0x77c9f2, antialias:false });
+const TILE=32; let WORLD_W=100, WORLD_H=60;
+const DOOR_TX = 50, DOOR_TY = 27;
+const bgLayer = new PIXI.Container(); app.stage.addChild(bgLayer);
+const matrixRainContainer = new PIXI.Container(); matrixRainContainer.visible=false; app.stage.addChild(matrixRainContainer);
+const world = new PIXI.Container(); app.stage.addChild(world); world.sortableChildren=true;
+
+const bgLayerFactors = [0.05, 0.1, 0.16, 0.24, 0.34]; // uzaktan yakına doğru paralaks hızı
+let bgTiles = [];
+function initBackground(){
+  bgLayer.removeChildren(); bgTiles=[];
+  const h = app.renderer.height + 100;
+  for(let i=1;i<=5;i++){
+    const tex = PIXI.Texture.from('assets/bg/layer'+i+'.png');
+    const ts = new PIXI.TilingSprite(tex, app.renderer.width+800, h);
+    ts.tileScale.set(h/346);
+    ts.y = -20;
+    bgLayer.addChild(ts);
+    bgTiles.push({sprite:ts, factor:bgLayerFactors[i-1]});
+  }
+  // yıldızlar (atmosfer için üstte kalsın)
+  const stars=new PIXI.Graphics();
+  for(let i=0;i<130;i++){ stars.beginFill(0xffffff, 0.2+Math.random()*0.5); const r=Math.random()<0.85?0.8:1.6; stars.drawCircle(Math.random()*(app.renderer.width+400), Math.random()*260, r); }
+  stars.endFill(); stars.alpha=0.55; bgLayer.addChild(stars); bgLayer._stars=stars;
+  const moon=new PIXI.Graphics();
+  moon.beginFill(0xfff6d8); moon.drawCircle(0,0,38); moon.endFill();
+  moon.beginFill(0xe9d9a8,0.4); moon.drawCircle(-14,-10,7); moon.drawCircle(10,14,5); moon.endFill();
+  moon.beginFill(0xfff6d8,0.12); moon.drawCircle(0,0,54); moon.endFill();
+  moon.x = app.renderer.width*0.78; moon.y = 90; bgLayer.addChild(moon);
+  const cloudLayer = new PIXI.Container(); bgLayer.addChild(cloudLayer); bgLayer._clouds=cloudLayer;
+  for(let i=0;i<6;i++){
+    const cl=new PIXI.Graphics(); cl.beginFill(0xffffff,0.14);
+    cl.drawEllipse(0,0,60,18); cl.drawEllipse(35,-6,40,14); cl.drawEllipse(-35,-4,38,13); cl.endFill();
+    cl.x = Math.random()*(app.renderer.width+600)-100; cl.y = 40+Math.random()*220; cl.alpha=0.5+Math.random()*0.4;
+    cloudLayer.addChild(cl);
+  }
+}
+initBackground();
+window.addEventListener('resize', initBackground);
+
+/* ---------- Matrix dünyası: dijital yağmur arkaplanı + tema geçişi ---------- */
+const MATRIX_GLYPHS='01アイウエオカキクケコサシスセソ日月火水木金土人大小山川';
+function matrixGlyph(){ return MATRIX_GLYPHS[Math.floor(Math.random()*MATRIX_GLYPHS.length)]; }
+let matrixRainDrops=[];
+function buildMatrixRain(){
+  matrixRainContainer.removeChildren(); matrixRainDrops=[];
+  const cols=Math.ceil((app.renderer.width+40)/16);
+  for(let i=0;i<cols;i++){
+    const t=new PIXI.Text(matrixGlyph(),{fontFamily:'monospace',fontSize:14,fill: i%5===0?0xbdffcf:0x39ff6a});
+    t.x=i*16; t.y=Math.random()*-app.renderer.height*1.5;
+    matrixRainContainer.addChild(t);
+    matrixRainDrops.push({t, speed:2.5+Math.random()*3.5});
+  }
+}
+function updateMatrixRain(delta){
+  if(!matrixRainContainer.visible) return;
+  const h=app.renderer.height;
+  matrixRainDrops.forEach(d=>{
+    d.t.y+=d.speed*delta;
+    if(Math.random()<0.015) d.t.text=matrixGlyph();
+    d.t.alpha=0.35+((d.t.y%h)/h)*0.65;
+    if(d.t.y>h+20) d.t.y=-20-Math.random()*300;
+  });
+}
+window.addEventListener('resize', ()=>{ if(matrixRainContainer.visible) buildMatrixRain(); });
+
+function applyMatrixTheme(isMatrix){
+  bgLayer.visible=!isMatrix;
+  matrixRainContainer.visible=isMatrix;
+  if(isMatrix){
+    if(!matrixRainDrops.length) buildMatrixRain();
+    app.renderer.background.color=0x000000;
+    charSprite._anim.tint=0x39ff6a; charSprite.alpha=0.9;
+    Object.values(remotePlayers).forEach(rp=>{ rp.container._anim.tint=0x39ff6a; rp.container.alpha=0.9; });
+  } else {
+    app.renderer.background.color=0x77c9f2;
+    charSprite._anim.tint=0xffffff; charSprite.alpha=1;
+    Object.values(remotePlayers).forEach(rp=>{ rp.container._anim.tint=0xffffff; rp.container.alpha=1; });
+  }
+}
+
+let currentUser=null, currentWorldName=null, worldData=null;
+let inventory=[], worn={wings:null};
+let hotbar=[null,null,null,null,null,null,null,null], selectedHotbar=0;
+let gems=0, wingsEquipped=false, jumpHoldTime=0, doubleJumped=false, prevJumpKeyHeld=false, jumpStage=0;
+const GRAVITY=0.85;
+const player={x:WORLD_W/2*TILE,y:5*TILE,vx:0,vy:0,onGround:false,facing:1};
+let walkPhase=0;
+
+/* ---------- Doku üretimi: gerçek kontürlü/desenli bloklar ---------- */
+function drawBlockTexture(def, edges){
+  edges = edges || {top:true,right:true,bottom:true,left:true};
+  const g=new PIXI.Graphics();
+  const [c1,c2,c3]=def.palette;
+  g.beginFill(c1); g.drawRect(0,0,32,32); g.endFill();
+  // bevel/highlight SADECE gerçek sınırlarda (hava veya farklı blok tipiyle komşuluk) çizilir,
+  // aynı tip bloklar arasında çizgi olmaz — bitişik, kesintisiz bir kütle gibi görünür
+  if(edges.top){ g.beginFill(0xffffff,0.14); g.drawRect(0,0,32,3); g.endFill(); }
+  if(edges.left){ g.beginFill(0xffffff,0.1); g.drawRect(0,0,3,32); g.endFill(); }
+  if(edges.bottom){ g.beginFill(c3,0.4); g.drawRect(0,28,32,4); g.endFill(); }
+  if(edges.right){ g.beginFill(c3,0.32); g.drawRect(28,0,4,32); g.endFill(); }
+  for(let i=0;i<14;i++){
+    g.beginFill(c3,0.22+Math.random()*0.22);
+    const sz=1.5+Math.random()*3;
+    g.drawRect(2+Math.random()*27, 2+Math.random()*27, sz, sz);
+  }
+  g.endFill();
+  if(def.grassTop && edges.top){
+    g.beginFill(0x5fd15f); g.drawRect(0,0,32,10); g.endFill();
+    g.beginFill(0x4caf50); g.drawRect(0,4,32,6); g.endFill();
+    g.beginFill(0x2e6e30); for(let i=0;i<7;i++){ g.drawRect(1+i*4.4,6,2.4,5); } g.endFill();
+    g.beginFill(0xffffff,0.25); g.drawRect(0,0,32,2); g.endFill();
+  }
+  if(def.cracked){
+    g.lineStyle(1.4,0x1a1c20,0.7);
+    g.moveTo(6,4); g.lineTo(14,14); g.lineTo(9,24); g.moveTo(14,14); g.lineTo(24,10);
+    g.moveTo(18,20); g.lineTo(26,26); g.lineStyle(0);
+  }
+  if(def.sparkle){
+    // kristal iç parlaklık damarları
+    g.lineStyle(2,0xffffff,0.5); g.moveTo(8,26); g.lineTo(16,10); g.lineTo(24,24); g.lineStyle(0);
+    g.beginFill(0xffffff,0.9); g.drawPolygon([16,6,19,12,16,18,13,12]); g.endFill();
+    g.beginFill(0xffffff,0.6); g.drawPolygon([8,20,10,24,8,28,6,24]); g.endFill();
+    g.beginFill(0xffffff,0.6); g.drawPolygon([24,16,26,20,24,24,22,20]); g.endFill();
+  }
+  if(def.hazard){
+    g.beginFill(0xffcc33,0.9);
+    for(let i=-1;i<5;i++){ g.drawPolygon([i*8,32, i*8+8,32, i*8+4,26]); }
+    g.endFill();
+  }
+  if(def.special==='lock'){
+    g.beginFill(0x8a5f10); g.drawRoundedRect(8,14,16,13,3); g.endFill();
+    g.beginFill(0xa8740f); g.drawRoundedRect(8,14,16,4,3); g.endFill();
+    g.lineStyle(3.4,0x8a5f10); g.drawCircle(16,13,5.5); g.lineStyle(0);
+    g.beginFill(0xfff4c2); g.drawCircle(16,19,2.4); g.endFill();
+    g.beginFill(0x6b4a10); g.drawRect(15,20,2,4); g.endFill();
+    g.lineStyle(1,0xfff4c2,0.5); g.drawRoundedRect(9,15,14,3,2); g.lineStyle(0);
+  }
+  // dış kontür SADECE gerçek sınır kenarlarında (komşu tarafında)
+  g.lineStyle(1.6,0x000000,0.45);
+  if(edges.top){ g.moveTo(0,0.5); g.lineTo(32,0.5); }
+  if(edges.bottom){ g.moveTo(0,31.5); g.lineTo(32,31.5); }
+  if(edges.left){ g.moveTo(0.5,0); g.lineTo(0.5,32); }
+  if(edges.right){ g.moveTo(31.5,0); g.lineTo(31.5,32); }
+  g.lineStyle(0);
+  return app.renderer.generateTexture(g);
+}
+const connectedTexCache={};
+function connectedBlockTex(dispId, x, y){
+  const def=ITEMS[dispId];
+  const at=(dx,dy)=>{
+    const nx=x+dx, ny=y+dy;
+    if(nx<0||nx>=WORLD_W||ny<0||ny>=WORLD_H) return null;
+    return displayTexId(nx,ny);
+  };
+  const edges={ top:at(0,-1)!==dispId, bottom:at(0,1)!==dispId, left:at(-1,0)!==dispId, right:at(1,0)!==dispId };
+  const key=dispId+'_'+(edges.top?1:0)+(edges.right?1:0)+(edges.bottom?1:0)+(edges.left?1:0);
+  if(!connectedTexCache[key]) connectedTexCache[key]=drawBlockTexture(def, edges);
+  return connectedTexCache[key];
+}
+function drawItemTexture(id){
+  const it=ITEMS[id]; const g=new PIXI.Graphics();
+  if(it.type==='seed'){
+    g.beginFill(0x8b5a2b); g.drawEllipse(16,21,9,6); g.endFill();
+    g.lineStyle(1.2,0x000000,0.5); g.drawEllipse(16,21,9,6); g.lineStyle(0);
+    g.beginFill(it.color); g.drawEllipse(16,13,6,9); g.endFill();
+    g.lineStyle(1.2,0x000000,0.5); g.drawEllipse(16,13,6,9); g.lineStyle(0);
+  } else if(it.type==='fruit'){
+    g.beginFill(it.color); g.drawCircle(16,18,10); g.endFill();
+    g.lineStyle(1.2,0x000000,0.5); g.drawCircle(16,18,10); g.lineStyle(0);
+    g.beginFill(0x3a7a2f); g.drawRect(14,5,4,6); g.endFill();
+  } else if(it.type==='wings'){
+    const style = it.wingStyle||'angel';
+    const c1=it.color, c2=it.color2||it.color;
+    g.lineStyle(1.3,0x000000,0.35);
+    if(style==='fire'){
+      // alevli/ejderha kanadı: sivri, çentikli kenarlar
+      const spikes=[[16,4],[24,2],[22,9],[30,7],[25,14],[31,17],[24,19],[27,26],[19,22],[16,28],[13,22],[5,26],[8,19],[1,17],[7,14],[2,7],[10,9],[8,2]];
+      g.beginFill(c1); g.drawPolygon(spikes); g.endFill();
+      g.beginFill(c2,0.7); g.drawPolygon([16,8,22,10,18,16,16,24,14,16,10,10]); g.endFill();
+    } else if(style==='crystal'){
+      // kristal/buz kanadı: keskin, şeffaf çokgen segmentler
+      g.beginFill(c1,0.85); g.drawPolygon([16,3,27,9,29,17,16,16]); g.endFill();
+      g.beginFill(c2,0.7); g.drawPolygon([16,16,29,17,24,27,16,22]); g.endFill();
+      g.beginFill(c1,0.85); g.drawPolygon([16,3,5,9,3,17,16,16]); g.endFill();
+      g.beginFill(c2,0.7); g.drawPolygon([16,16,3,17,8,27,16,22]); g.endFill();
+      g.lineStyle(0.8,0xffffff,0.6); g.moveTo(16,3); g.lineTo(16,22); g.lineStyle(0);
+    } else if(style==='shadow'){
+      // gölge/yarasa kanadı: zarlı, sivri parmaklı
+      g.beginFill(c1,0.92);
+      g.drawPolygon([16,6, 26,2, 24,10, 31,9, 25,15, 30,20, 22,18, 21,26, 16,20]);
+      g.drawPolygon([16,6, 6,2, 8,10, 1,9, 7,15, 2,20, 10,18, 11,26, 16,20]);
+      g.endFill();
+      g.lineStyle(0.9,0x000000,0.4); g.moveTo(16,6); g.lineTo(31,9); g.moveTo(16,6); g.lineTo(1,9); g.lineStyle(0);
+    } else {
+      // klasik melek kanadı
+      g.beginFill(c1,0.92); g.drawPolygon([16,4,30,16,16,28,20,16]); g.drawPolygon([16,4,2,16,16,28,12,16]); g.endFill();
+      g.beginFill(0xffffff,0.35); g.drawPolygon([16,4,23,11,16,16,14,11]); g.drawPolygon([16,4,9,11,16,16,18,11]); g.endFill();
+    }
+    g.lineStyle(0);
+  } else if(it.type==='currency'){
+    const tier = it.tier||1;
+    const scale = tier===3?1.15 : tier===2?1.0 : 0.85;
+    const cx=16, cy=17;
+    if(tier>=2){ g.beginFill(it.color,0.25); g.drawCircle(cx,cy,15*scale); g.endFill(); } // dış parıltı halesi
+    g.lineStyle(1.2,0x000000,0.35);
+    const pts = tier===3
+      ? [cx,cy-15*scale, cx+9*scale,cy-8*scale, cx+11*scale,cy+6*scale, cx,cy+15*scale, cx-11*scale,cy+6*scale, cx-9*scale,cy-8*scale]
+      : [cx,cy-13*scale, cx+11*scale,cy-2*scale, cx+8*scale,cy+13*scale, cx-8*scale,cy+13*scale, cx-11*scale,cy-2*scale];
+    g.beginFill(it.color); g.drawPolygon(pts); g.endFill();
+    g.beginFill(0xffffff,0.45); g.drawPolygon([cx,cy-13*scale, cx+6*scale,cy-3*scale, cx,cy-1*scale, cx-6*scale,cy-3*scale]); g.endFill();
+    if(tier>=2){ g.lineStyle(1,0xffffff,0.5); g.moveTo(cx,cy-13*scale); g.lineTo(cx,cy+13*scale); g.lineStyle(0); }
+    if(tier===3){
+      // ekstra pırıltı yıldızları
+      [[cx-10,cy-10],[cx+11,cy-4],[cx-4,cy+13]].forEach(([px,py])=>{
+        g.beginFill(0xffffff,0.9); g.drawPolygon([px,py-2.5, px+0.8,py-0.8, px+2.5,py, px+0.8,py+0.8, px,py+2.5, px-0.8,py+0.8, px-2.5,py, px-0.8,py-0.8]); g.endFill();
+      });
+    }
+    g.lineStyle(0);
+  } else if(it.type==='tool' && id==='wrench'){
+    g.lineStyle(1.4,0x000000,0.4);
+    g.beginFill(it.color);
+    g.drawCircle(8,8,6); g.drawCircle(8,8,3);
+    g.drawPolygon([10,10, 26,26, 24,28, 8,12]);
+    g.drawCircle(26,26,5); g.drawCircle(26,26,2.5);
+    g.endFill(); g.lineStyle(0);
+    g.beginFill(0xffffff,0.25); g.drawCircle(7,7,2); g.endFill();
+  } else if(it.type==='tool'){
+    g.beginFill(0x7a5c3a); g.drawRoundedRect(4,16,10,8,2); g.endFill();
+    g.beginFill(it.color); g.drawRoundedRect(12,8,16,14,4); g.endFill();
+    g.lineStyle(1.2,0x000000,0.4); g.drawRoundedRect(12,8,16,14,4); g.lineStyle(0);
+  } else if(it.type==='lock'){
+    return drawBlockTexture(ITEMS.worldlock);
+  } else if(it.type==='block'){
+    return drawBlockTexture(it);
+  } else if(it.type==='element'){
+    // element/öz: parlayan damla şekli
+    const c=it.color||0xaaaaaa;
+    g.lineStyle(1.3,0x000000,0.45);
+    g.beginFill(c); g.drawPolygon([16,3, 22,13, 24,20, 21,26, 16,29, 11,26, 8,20, 10,13]); g.endFill();
+    g.lineStyle(0);
+    g.beginFill(0xffffff,0.4); g.drawPolygon([16,3, 19,10, 16,14, 13,10]); g.endFill();
+    g.beginFill(0xffffff,0.25); g.drawCircle(13,19,1.6); g.endFill();
+  } else if(it.type==='material' && it.isAlloy){
+    // alaşım: pürüzsüz, parlak, dikdörtgen külçe (ingot)
+    const c=it.color||0xaaaaaa;
+    g.lineStyle(1.4,0x000000,0.5);
+    g.beginFill(c); g.drawPolygon([6,12, 26,10, 27,21, 7,23]); g.endFill();
+    g.lineStyle(0);
+    g.beginFill(0xffffff,0.5); g.drawPolygon([6,12, 26,10, 25,13, 7,15]); g.endFill();
+    g.beginFill(0x000000,0.2); g.drawPolygon([7,20, 27,18, 27,21, 7,23]); g.endFill();
+    g.lineStyle(1,0xffffff,0.35); g.moveTo(10,13); g.lineTo(9,22); g.lineStyle(0);
+  } else if(it.type==='material'){
+    // ham cevher: pürüzlü, düzensiz kaya/nugget şekli
+    const c=it.color||0xaaaaaa;
+    g.lineStyle(1.4,0x000000,0.5);
+    g.beginFill(c); g.drawPolygon([13,4, 21,6, 27,13, 25,21, 18,27, 10,25, 5,18, 7,10]); g.endFill();
+    g.lineStyle(0);
+    g.beginFill(0xffffff,0.3); g.drawPolygon([13,4, 21,6, 17,11, 11,9]); g.endFill();
+    g.beginFill(0x000000,0.2); g.drawPolygon([10,25, 18,27, 25,21, 18,22]); g.endFill();
+    g.beginFill(0xffffff,0.2); g.drawCircle(19,15,1.5); g.endFill();
+  } else if(it.type==='pack'){
+    // Seed / Item paketi kutu görünümü
+    const pc = it.color||0xffcc33;
+    g.beginFill(0x4a2800); g.drawRoundedRect(3,3,26,26,4); g.endFill();
+    g.beginFill(pc); g.drawRoundedRect(5,5,22,22,3); g.endFill();
+    g.beginFill(0xffffff,0.35); g.drawRoundedRect(5,5,22,6,3); g.endFill();
+    // kurdele
+    g.lineStyle(2.5,0x8b0000,0.9); g.moveTo(16,5); g.lineTo(16,27); g.moveTo(5,16); g.lineTo(27,16); g.lineStyle(0);
+    // fiyonk
+    g.beginFill(0xff4444); g.drawPolygon([16,12, 10,8, 11,13, 16,14]); g.drawPolygon([16,12, 22,8, 21,13, 16,14]); g.endFill();
+    g.beginFill(0xff6666); g.drawCircle(16,13,2.5); g.endFill();
+  } else if(id==='weapon_trident'){
+    // Poseidon's Trident - golden
+    g.lineStyle(2.5,0xb8860b,0.9);
+    g.beginFill(0xffd700);
+    // sap
+    g.drawRect(14,12,4,18); g.endFill();
+    // orta dişi
+    g.beginFill(0xffd700); g.drawPolygon([16,2, 18,10, 14,10]); g.endFill();
+    // sol diş
+    g.beginFill(0xffd700); g.drawPolygon([10,6, 12,12, 9,12]); g.endFill();
+    // sağ diş
+    g.beginFill(0xffd700); g.drawPolygon([22,6, 23,12, 20,12]); g.endFill();
+    g.lineStyle(0);
+    g.beginFill(0xffffff,0.5); g.drawRect(14.5,12,1.5,18); g.endFill();
+  } else if(id==='weapon_lightning'){
+    // Zeus Lightning Bolt - electric
+    g.beginFill(0xffff00); g.drawPolygon([20,2, 12,16, 17,16, 10,30, 22,14, 16,14]); g.endFill();
+    g.lineStyle(1.5,0xcccc00,0.8); g.drawPolygon([20,2, 12,16, 17,16, 10,30, 22,14, 16,14]); g.lineStyle(0);
+    g.beginFill(0xffffff,0.6); g.drawPolygon([20,2, 17,9, 16.5,14, 17,16, 20.5,10]); g.endFill();
+    // elektrik parıltısı
+    g.beginFill(0x88ffff,0.5); g.drawCircle(15,16,10); g.endFill();
+  }
+  return app.renderer.generateTexture(g);
+}
+const texCache={};
+function tex(id){ if(!texCache[id]) texCache[id]=drawItemTexture(id); return texCache[id]; }
+
+/* ---------- Karakter (gerçek sprite tabanlı animasyon) ---------- */
+// idle:2 frame, walk:4 frame, jump:1 frame, attack:4 frame
+// Her frame 96x96 piksel (48px karakter 2x scale)
+const CHAR_ANIM_DEF = { idle:{frames:2,w:96,h:96}, walk:{frames:4,w:96,h:96}, jump:{frames:1,w:96,h:96}, attack:{frames:4,w:96,h:96} };
+let charAnimTextures = null;
+async function loadCharacterAssets(){
+  charAnimTextures = {};
+  for(const name of Object.keys(CHAR_ANIM_DEF)){
+    const def = CHAR_ANIM_DEF[name];
+    const btex = await PIXI.Assets.load('assets/char/player_'+name+'.png');
+    btex.baseTexture.scaleMode = PIXI.SCALE_MODES.NEAREST;
+    const frames=[];
+    for(let i=0;i<def.frames;i++){
+      frames.push(new PIXI.Texture(btex.baseTexture, new PIXI.Rectangle(i*def.w, 0, def.w, def.h)));
+    }
+    charAnimTextures[name]=frames;
+  }
+  // Yedek: eğer attack yüklenemezse idle kullan
+  if(!charAnimTextures.attack || !charAnimTextures.attack.length){
+    charAnimTextures.attack = charAnimTextures.idle;
+  }
+}
+function setCharAnim(c, name, opts){
+  opts = opts||{};
+  // 'attack' artık alt gövdeyi (walk/idle/jump) kesmez — ayrı bir üst katman sprite'ında oynar.
+  // Böylece karakter yürürken vurduğunda bacaklar yürümeye devam eder, üst gövde vuruş yapar.
+  if(name==='attack'){
+    if(!c._punchPlaying){
+      c._punchPlaying=true;
+      c._punchOverlay.visible=true;
+      c._punchOverlay.gotoAndPlay(0);
+      c._punchOverlay.onComplete=()=>{ c._punchPlaying=false; c._punchOverlay.visible=false; };
+    }
+    return;
+  }
+  if(c._currentAnimName===name && c._anim.playing) return;
+  c._currentAnimName=name;
+  c._anim.textures = charAnimTextures[name];
+  c._anim.animationSpeed = opts.speed||0.15;
+  c._anim.loop = opts.loop!==false;
+  c._anim.gotoAndPlay(0);
+}
+// Kanatlara idle nefes alma / walk çırpma / jump açılma animasyonu verir.
+// Sprite bazlı frame animasyonu yerine hafif prosedürel hareket kullanır (ek asset gerektirmez, anında çalışır).
+function updateWingMotion(c, state, t){
+  const wing=c._wing; if(!wing || !wing.visible) return;
+  const phase = t*0.001 + (c._wingPhase||0);
+  if(state==='jump'){
+    wing.rotation = -0.35 + Math.sin(phase*10)*0.06;
+    wing.y = -13 - 2;
+    wing.scale.set(1.08);
+  } else if(state==='walk'){
+    wing.rotation = Math.sin(phase*14)*0.22;
+    wing.y = -13 + Math.sin(phase*14)*1.2;
+    wing.scale.set(1.0);
+  } else {
+    wing.rotation = Math.sin(phase*3)*0.08;
+    wing.y = -13 + Math.sin(phase*3)*0.8;
+    wing.scale.set(1.0);
+  }
+}
+function buildCharacter(){
+  const c=new PIXI.Container();
+  c.sortableChildren=true;
+
+  // ——— Kanat katmanı (en arkada) ———
+  const wing=new PIXI.Sprite(PIXI.Texture.EMPTY);
+  wing.anchor.set(0.5,0.7); wing.position.set(0,-8); wing.visible=false; wing.scale.set(1.0); wing.zIndex=0;
+  c.addChild(wing); c._wing=wing; c._wingId=null; c._wingPhase=Math.random()*10;
+
+  // ——— Temel karakter animasyon katmanı ———
+  const anim=new PIXI.AnimatedSprite(charAnimTextures.idle);
+  anim.anchor.set(0.5,0.85); anim.animationSpeed=0.10; anim.loop=true; anim.play();
+  anim.zIndex=1;
+  c.addChild(anim); c._anim=anim; c._currentAnimName='idle';
+
+  // ——— Ekipman katmanları (üst gövde üzerinde render) ———
+  // Şapka/baş ekipmanı
+  const hatLayer=new PIXI.Sprite(PIXI.Texture.EMPTY);
+  hatLayer.anchor.set(0.5,0.85); hatLayer.visible=false; hatLayer.zIndex=3;
+  c.addChild(hatLayer); c._hatLayer=hatLayer;
+
+  // Gövde/üst ekipman
+  const bodyLayer=new PIXI.Sprite(PIXI.Texture.EMPTY);
+  bodyLayer.anchor.set(0.5,0.85); bodyLayer.visible=false; bodyLayer.zIndex=2;
+  c.addChild(bodyLayer); c._bodyLayer=bodyLayer;
+
+  // El/silah ekipmanı
+  const handLayer=new PIXI.Sprite(PIXI.Texture.EMPTY);
+  handLayer.anchor.set(0.5,0.85); handLayer.visible=false; handLayer.zIndex=4;
+  c.addChild(handLayer); c._handLayer=handLayer;
+
+  // ——— Vuruş overlay (attack) ———
+  const punchOverlay=new PIXI.AnimatedSprite(charAnimTextures.attack||charAnimTextures.idle);
+  punchOverlay.anchor.set(0.5,0.85);
+  punchOverlay.animationSpeed=0.28; punchOverlay.loop=false; punchOverlay.visible=false;
+  punchOverlay.zIndex=5;
+  c.addChild(punchOverlay); c._punchOverlay=punchOverlay; c._punchPlaying=false;
+
+  return c;
+}
+// Ekipman layerını güncelle: worn objesi değiştiğinde çağrılır
+function updateEquipmentLayers(c, worn){
+  if(!c||!worn) return;
+  const wornKeys = Object.keys(worn);
+  // Şapka/baş
+  const hatId = worn.hat||worn.head||null;
+  if(hatId && textures[hatId]){
+    c._hatLayer.texture=tex(hatId); c._hatLayer.visible=true;
+  } else { c._hatLayer.visible=false; }
+  // Üst gövde / gömlek
+  const bodyId = worn.shirt||worn.top||worn.body||null;
+  if(bodyId && textures[bodyId]){
+    c._bodyLayer.texture=tex(bodyId); c._bodyLayer.visible=true;
+  } else { c._bodyLayer.visible=false; }
+  // El
+  const handId = worn.hand||worn.weapon||null;
+  if(handId && textures[handId]){
+    c._handLayer.texture=tex(handId); c._handLayer.visible=true;
+  } else { c._handLayer.visible=false; }
+}
+function setCharWing(c, wingId){
+  if(!wingId){ c._wing.visible=false; return; }
+  if(c._wingId!==wingId){ c._wing.texture=tex(wingId); c._wingId=wingId; }
+  c._wing.visible=true;
+}
+let charAssetsPromise = loadCharacterAssets();
+let charSprite=null, nameLabel=null;
+async function ensureCharacterReady(){
+  await charAssetsPromise;
+  if(!charSprite){
+    charSprite=buildCharacter(); charSprite.zIndex=50; world.addChild(charSprite);
+    nameLabel=new PIXI.Text('',{fontFamily:'Trebuchet MS',fontSize:12,fill:0xffffff,stroke:0x000000,strokeThickness:3});
+    nameLabel.anchor.set(0.5); nameLabel.zIndex=51; world.addChild(nameLabel);
+  }
+}
+
+/* ---------- Diğer oyuncular (multiplayer) ---------- */
+const remotePlayers={}; // socketId -> {container, label, targetX, targetY, dir}
+function addRemotePlayer(p){
+  if(remotePlayers[p.id] || !charAnimTextures) return;
+  const c=buildCharacter(); c.zIndex=49; world.addChild(c);
+  const label=new PIXI.Text(p.username,{fontFamily:'Trebuchet MS',fontSize:12,fill:0xffffff,stroke:0x000000,strokeThickness:3});
+  label.anchor.set(0.5); label.zIndex=49; world.addChild(label);
+  c.x=p.x; c.y=p.y; label.x=p.x; label.y=p.y-30;
+  if(p.worn && p.worn.wings){ setCharWing(c, p.worn.wings); }
+  if(worldData && worldData.isMatrix){ c._anim.tint=0x39ff6a; c.alpha=0.9; }
+  remotePlayers[p.id]={id:p.id, container:c, label, x:p.x, y:p.y, targetX:p.x, targetY:p.y, dir:p.dir||1, anim:'idle', username:p.username};
+}
+function moveRemotePlayer(p){
+  const rp=remotePlayers[p.id]; if(!rp) return;
+  rp.targetX=p.x; rp.targetY=p.y; rp.dir=p.dir; rp.anim=p.anim||'idle';
+}
+function removeRemotePlayer(id){
+  const rp=remotePlayers[id]; if(!rp) return;
+  world.removeChild(rp.container); world.removeChild(rp.label);
+  if(rp.bubble) world.removeChild(rp.bubble);
+  delete remotePlayers[id];
+}
+function setRemoteWorn(id, worn){
+  const rp=remotePlayers[id]; if(!rp) return;
+  setCharWing(rp.container, worn && worn.wings);
+}
+function clearRemotePlayers(){ Object.keys(remotePlayers).forEach(removeRemotePlayer); }
+
+/* ---------- Matrix NPC & Telefon Kulübesi (görsel + etkileşim) ---------- */
+let matrixNpcSprites=[], matrixBoothSprites=[];
+function clearMatrixEntities(){
+  matrixNpcSprites.forEach(s=>world.removeChild(s.container)); matrixNpcSprites=[];
+  matrixBoothSprites.forEach(s=>world.removeChild(s.container)); matrixBoothSprites=[];
+}
+function spawnMatrixNpcs(npcs){
+  (npcs||[]).forEach(n=>{
+    const c=new PIXI.Container(); c.zIndex=48;
+    const g=new PIXI.Graphics();
+    g.beginFill(0x2a2a33); g.drawRoundedRect(-9,-30,18,30,3); g.endFill();
+    g.beginFill(0x39ff6a,0.85); g.drawCircle(0,-34,7); g.endFill();
+    g.lineStyle(1.4,0x39ff6a,0.6); g.drawRoundedRect(-9,-30,18,30,3); g.lineStyle(0);
+    c.addChild(g);
+    const label=new PIXI.Text('NPC',{fontFamily:'Trebuchet MS',fontSize:10,fill:0x9dffb0,stroke:0x000000,strokeThickness:3});
+    label.anchor.set(0.5); label.y=-46; c.addChild(label);
+    c.x=n.x; c.y=n.y;
+    c.eventMode='static'; c.cursor='pointer';
+    c.on('pointerdown', ()=> interactMatrixNpc(n));
+    world.addChild(c);
+    matrixNpcSprites.push({container:c, data:n});
+  });
+}
+function spawnMatrixBooths(booths){
+  (booths||[]).forEach(b=>{
+    const c=new PIXI.Container(); c.zIndex=48;
+    const g=new PIXI.Graphics();
+    g.beginFill(0x1a2a3a); g.drawRoundedRect(-10,-34,20,34,3); g.endFill();
+    g.beginFill(0x6fe3ff,0.5); g.drawRoundedRect(-7,-30,14,24,2); g.endFill();
+    g.lineStyle(1.4,0x6fe3ff,0.8); g.drawRoundedRect(-10,-34,20,34,3); g.lineStyle(0);
+    c.addChild(g);
+    const label=new PIXI.Text('☎',{fontFamily:'Trebuchet MS',fontSize:14,fill:0x6fe3ff,stroke:0x000000,strokeThickness:3});
+    label.anchor.set(0.5); label.y=-42; c.addChild(label);
+    c.x=b.x; c.y=b.y;
+    c.eventMode='static'; c.cursor='pointer';
+    c.on('pointerdown', ()=> interactMatrixBooth(b));
+    world.addChild(c);
+    matrixBoothSprites.push({container:c, data:b});
+  });
+}
+function nearEntity(ex,ey,maxDist){
+  return Math.hypot(player.x-ex, player.y-ey) <= (maxDist||70);
+}
+function interactMatrixNpc(n){
+  if(!nearEntity(n.x,n.y)){ addChatMsg('world','Sistem','NPC\'ye yaklaşman lazım.'); return; }
+  openMatrixNpcDialog(n);
+}
+function interactMatrixBooth(b){
+  if(!nearEntity(b.x,b.y)){ addChatMsg('world','Sistem','Telefon kulübesine yaklaşman lazım.'); return; }
+  addChatMsg('world','Sistem','Bu telefon kulübesi aktif bir görev sırasında kullanılabilir.');
+}
+
+/* ---------- Matrix NPC Diyalog & Görev Kabul ---------- */
+let pendingQuestType=null;
+async function openMatrixNpcDialog(npc){
+  try{
+    const resp = await emitAsync('matrix:npcTalk', {npcId:npc.id});
+    $('npcDialogText').textContent = resp.dialog;
+    $('npcQuestButtons').classList.toggle('hidden', !resp.hasQuest);
+    pendingQuestType = resp.hasQuest ? resp.questType : null;
+    show('npcDialogModal');
+  }catch(e){ addChatMsg('world','Sistem', e.message); }
+}
+$('btnNpcDialogClose').onclick=()=>hide('npcDialogModal');
+$('btnQuestDecline').onclick=()=>hide('npcDialogModal');
+$('btnQuestAccept').onclick=async()=>{
+  if(!pendingQuestType) return;
+  try{
+    const resp = await emitAsync('matrix:questAccept', {questType:pendingQuestType});
+    hide('npcDialogModal');
+    startMissionWorld(resp);
+  }catch(e){ addChatMsg('world','Sistem', e.message); }
+};
+
+/* ---------- Mission World (Telephone Line & Courier) ---------- */
+let activeMission=null; // {type, tiles, spawn, booths, enemies, deliveryPoint, durationMs, startedAt}
+let missionEnemySprites=[], missionBoothSpritesLocal=[], missionDeliverySprite=null;
+function startMissionWorld(data){
+  activeMission = {
+    type:data.questType, tiles:data.tiles, spawn:data.spawn, booths:data.booths, enemies:data.enemies,
+    deliveryPoint:data.deliveryPoint, durationMs:data.durationMs, startedAt:Date.now(),
+  };
+  // Mission dünyasını mevcut render altyapısıyla göster: worldData'yı geçici olarak mission tiles'ına çeviriyoruz.
+  WORLD_H = data.tiles.length; WORLD_W = data.tiles[0].length;
+  worldData = { name:'MISSION', owner:'SYSTEM', locked:true, allow:[], tiles:data.tiles, isMatrix:true, isMission:true, doorTx:data.spawn.x, doorTy:data.spawn.y };
+  clearRemotePlayers(); clearMatrixEntities();
+  player.x=data.spawn.x*TILE+16; player.y=data.spawn.y*TILE; player.vx=0; player.vy=0;
+  renderAllTiles();
+  spawnMissionEntities();
+  show('missionHud');
+  $('missionHudTitle').textContent = data.questType==='telephone' ? '☎️ Telephone Line Connection' : '📦 Courier Mission';
+  addChatMsg('world','Sistem', data.questType==='telephone' ? 'Görev başladı: tüm telefon kulübelerini bağla!' : 'Görev başladı: Hard Drive\'ı teslimat noktasına götür!');
+  if(data.questType==='telephone') renderCableGameList();
+}
+function spawnMissionEntities(){
+  missionEnemySprites.forEach(s=>world.removeChild(s.container)); missionEnemySprites=[];
+  missionBoothSpritesLocal.forEach(s=>world.removeChild(s.container)); missionBoothSpritesLocal=[];
+  if(missionDeliverySprite){ world.removeChild(missionDeliverySprite); missionDeliverySprite=null; }
+  if(!activeMission) return;
+  (activeMission.booths||[]).forEach(b=>{
+    const c=new PIXI.Container(); c.zIndex=48;
+    const g=new PIXI.Graphics();
+    g.beginFill(b.connected?0x1a3a1a:0x1a2a3a); g.drawRoundedRect(-10,-34,20,34,3); g.endFill();
+    g.beginFill(b.connected?0x39ff6a:0x6fe3ff,0.5); g.drawRoundedRect(-7,-30,14,24,2); g.endFill();
+    g.lineStyle(1.4,b.connected?0x39ff6a:0x6fe3ff,0.8); g.drawRoundedRect(-10,-34,20,34,3); g.lineStyle(0);
+    c.addChild(g);
+    const label=new PIXI.Text(b.connected?'✓':'☎',{fontFamily:'Trebuchet MS',fontSize:14,fill:b.connected?0x39ff6a:0x6fe3ff,stroke:0x000000,strokeThickness:3});
+    label.anchor.set(0.5); label.y=-42; c.addChild(label);
+    c.x=b.x*TILE+16; c.y=b.y*TILE;
+    c.eventMode='static'; c.cursor='pointer';
+    c.on('pointerdown', ()=> connectBooth(b.id));
+    world.addChild(c);
+    missionBoothSpritesLocal.push({container:c, data:b});
+  });
+  (activeMission.enemies||[]).forEach(e=>{
+    if(!e.alive) return;
+    const c=new PIXI.Container(); c.zIndex=48;
+    const g=new PIXI.Graphics();
+    g.beginFill(0x3a1a1a); g.drawRoundedRect(-9,-32,18,32,3); g.endFill();
+    g.lineStyle(1.4,0xff3a3a,0.9); g.drawRoundedRect(-9,-32,18,32,3); g.lineStyle(0);
+    g.beginFill(0xff3a3a,0.9); g.drawCircle(0,-36,5); g.endFill();
+    c.addChild(g);
+    const label=new PIXI.Text(`Agent (${e.hp})`,{fontFamily:'Trebuchet MS',fontSize:10,fill:0xff8a8a,stroke:0x000000,strokeThickness:3});
+    label.anchor.set(0.5); label.y=-46; c.addChild(label);
+    c.x=e.x*TILE+16; c.y=e.y*TILE;
+    c.eventMode='static'; c.cursor='pointer';
+    c.on('pointerdown', ()=> hitEnemy(e.id));
+    world.addChild(c);
+    missionEnemySprites.push({container:c, data:e, label});
+  });
+  if(activeMission.deliveryPoint){
+    const d=activeMission.deliveryPoint;
+    const c=new PIXI.Container(); c.zIndex=48;
+    const g=new PIXI.Graphics();
+    g.beginFill(0x3a2a1a); g.drawRoundedRect(-11,-36,22,36,3); g.endFill();
+    g.lineStyle(1.6,0xffb03a,0.9); g.drawRoundedRect(-11,-36,22,36,3); g.lineStyle(0);
+    c.addChild(g);
+    const label=new PIXI.Text('📦 Teslimat',{fontFamily:'Trebuchet MS',fontSize:10,fill:0xffd9a0,stroke:0x000000,strokeThickness:3});
+    label.anchor.set(0.5); label.y=-44; c.addChild(label);
+    c.x=d.x*TILE+16; c.y=d.y*TILE;
+    c.eventMode='static'; c.cursor='pointer';
+    c.on('pointerdown', ()=> deliverPackage());
+    world.addChild(c);
+    missionDeliverySprite=c;
+  }
+}
+async function connectBooth(boothId){
+  const b=(activeMission.booths||[]).find(x=>x.id===boothId); if(!b) return;
+  if(!nearEntity(b.x*TILE+16, b.y*TILE)){ addChatMsg('world','Sistem','Kulübeye yaklaşman lazım.'); return; }
+  try{
+    const resp=await emitAsync('matrix:connectBooth', {boothId});
+    b.connected=true; playSfx('merge');
+    spawnMissionEntities(); renderCableGameList();
+    if(resp.missionComplete) return; // matrix:missionEnded event'i geri dönüşü yönetecek
+    addChatMsg('world','Sistem', `Bağlandı: ${resp.connectedCount}/${resp.total}`);
+  }catch(e){ addChatMsg('world','Sistem', e.message); }
+}
+async function deliverPackage(){
+  const d=activeMission.deliveryPoint;
+  if(!nearEntity(d.x*TILE+16, d.y*TILE)){ addChatMsg('world','Sistem','Teslimat noktasına yaklaşman lazım.'); return; }
+  try{ await emitAsync('matrix:deliverPackage', {}); playSfx('merge'); }
+  catch(e){ addChatMsg('world','Sistem', e.message); }
+}
+async function hitEnemy(enemyId){
+  const e=(activeMission.enemies||[]).find(x=>x.id===enemyId); if(!e||!e.alive) return;
+  if(!nearEntity(e.x*TILE+16, e.y*TILE, 90)){ addChatMsg('world','Sistem','Agent\'a yaklaşman lazım.'); return; }
+  try{
+    const resp=await emitAsync('matrix:hitEnemy', {enemyId});
+    playSfx('button');
+    if(!resp.alive){ e.alive=false; spawnMissionEntities(); if(resp.loot) addChatMsg('world','Sistem', `Agent düştü! Loot: ${ITEMS[resp.loot]?ITEMS[resp.loot].name:resp.loot}`); }
+    else { const sp=missionEnemySprites.find(s=>s.data.id===enemyId); if(sp) sp.label.text=`Agent (${resp.hp})`; }
+  }catch(e2){ addChatMsg('world','Sistem', e2.message); }
+}
+function renderCableGameList(){
+  if(!activeMission || activeMission.type!=='telephone') return;
+  const box=$('cableBoothList'); box.innerHTML='';
+  activeMission.booths.forEach((b,i)=>{
+    const row=document.createElement('div'); row.className='recipeCard';
+    row.innerHTML=`<b>Kulübe ${i+1}</b> — ${b.connected?'<span style="color:#39ff6a">Bağlandı ✓</span>':'<span style="color:#ffb03a">Bekliyor</span>'}`;
+    box.appendChild(row);
+  });
+  $('missionHudStatus').textContent = `Kablolar: ${activeMission.booths.filter(b=>b.connected).length} / ${activeMission.booths.length}`;
+}
+$('btnCableGameClose').onclick=()=>hide('cableGameModal');
+function updateMissionHud(){
+  if(!activeMission) return;
+  const elapsed = Date.now()-activeMission.startedAt;
+  const remaining = Math.max(0, Math.ceil((activeMission.durationMs-elapsed)/1000));
+  if(activeMission.type==='telephone'){
+    const connected = activeMission.booths.filter(b=>b.connected).length;
+    $('missionHudStatus').textContent = `Kablolar: ${connected}/${activeMission.booths.length} — Süre: ${remaining}sn`;
+  } else if(activeMission.type==='courier'){
+    const hasPackage = inventory.some(i=>i.id==='hard_drive' && i.count>0);
+    $('missionHudStatus').textContent = `${hasPackage?'📦 Hard Drive taşınıyor':'Teslim edildi'} — Süre: ${remaining}sn`;
+  }
+}
+function endActiveMission(){
+  activeMission=null;
+  hide('missionHud'); hide('cableGameModal');
+  missionEnemySprites.forEach(s=>world.removeChild(s.container)); missionEnemySprites=[];
+  missionBoothSpritesLocal.forEach(s=>world.removeChild(s.container)); missionBoothSpritesLocal=[];
+  if(missionDeliverySprite){ world.removeChild(missionDeliverySprite); missionDeliverySprite=null; }
+}
+$('btnMissionEndClose').onclick=async()=>{
+  hide('missionEndModal');
+  // Görev bitince oyuncuyu doğrudan Matrix'e geri döndür (yeniden auth:join ile).
+  await enterWorld('MATRIX', {skipCreate:true});
+};
+function updateRemotePlayers(delta){
+  Object.values(remotePlayers).forEach(rp=>{
+    rp.x += (rp.targetX-rp.x)*0.25; rp.y += (rp.targetY-rp.y)*0.25;
+    rp.container.x=rp.x; rp.container.y=rp.y; rp.container.scale.x=-rp.dir;
+    const rpBody = rp.anim==='walk'?'walk':(rp.anim==='jump'?'jump':'idle');
+    setCharAnim(rp.container, rpBody, {speed: rpBody==='walk'?0.18:(rpBody==='jump'?0.12:0.08)});
+    if(rp.anim==='attack'){ setCharAnim(rp.container,'attack'); }
+    updateWingMotion(rp.container, rpBody, Date.now());
+    rp.label.x=rp.x; rp.label.y=rp.y-30;
+    if(rp.bubble){
+      rp.bubbleTimer-=delta/60;
+      rp.bubble.x=rp.x; rp.bubble.y=rp.y-34;
+      rp.bubble.alpha = rp.bubbleTimer<1? Math.max(0,rp.bubbleTimer):1;
+      if(rp.bubbleTimer<=0){ world.removeChild(rp.bubble); rp.bubble=null; }
+    }
+  });
+}
+let lastMoveSent=0;
+function sendMoveIfChanged(){
+  if(!socket || !socket.connected || !gameRunning) return;
+  const now=Date.now();
+  if(now-lastMoveSent<60) return; // saniyede ~16 kez ile sınırla
+  lastMoveSent=now;
+  const moveAnim = punchT>0 ? 'attack' : (!player.onGround ? 'jump' : (Math.abs(player.vx)>0.4?'walk':'idle'));
+  socket.emit('player:move', {x:player.x, y:player.y, dir:player.facing, anim: moveAnim});
+}
+
+/* ---------- Dünya ---------- */
+function newWorldTiles(){
+  const tiles=[];
+  for(let y=0;y<WORLD_H;y++){ tiles.push([]);
+    for(let x=0;x<WORLD_W;x++){
+      let id=null;
+      if(y>=WORLD_H-9){ id=(y===WORLD_H-9)?'grassdirt':(y>WORLD_H-4?'cave':'dirt'); }
+      if(y>WORLD_H-4 && y<WORLD_H-1 && Math.random()<0.09) id='crystal';
+      if(y===WORLD_H-1) id='bedrock';
+      tiles[y].push(id);
+    } }
+  return tiles;
+}
+const tileSprites={}, hpMap={};
+function displayTexId(x,y){
+  const id=worldData.tiles[y][x];
+  if(!id) return id;
+  if(id==='dirt' || id==='grassdirt'){
+    const above = y>0 ? worldData.tiles[y-1][x] : null;
+    return above ? 'dirt' : 'grassdirt';
+  }
+  return id;
+}
+function renderTile(x,y){
+  const key=x+'_'+y; const id=worldData.tiles[y][x];
+  if(tileSprites[key]){ world.removeChild(tileSprites[key]); delete tileSprites[key]; }
+  if(id){
+    const dispId=displayTexId(x,y);
+    const texture = ITEMS[dispId].type==='block' ? connectedBlockTex(dispId,x,y) : tex(dispId);
+    const s=new PIXI.Sprite(texture); s.x=x*TILE; s.y=y*TILE; s.zIndex=1; world.addChild(s); tileSprites[key]=s;
+  }
+  delete hpMap[key];
+}
+function renderTileAndNeighbors(x,y){
+  renderTile(x,y);
+  if(x>0) renderTile(x-1,y);
+  if(x<WORLD_W-1) renderTile(x+1,y);
+  if(y>0) renderTile(x,y-1);
+  if(y<WORLD_H-1) renderTile(x,y+1);
+}
+// Büyük dünyalarda (Matrix: 300x100 = 30.000 tile) tamamını aynı anda sprite olarak render etmek
+// performansı çökertir. Bu eşiğin altındaki dünyalarda (normal: 100x34 = 3.400) eski davranış (tam render) korunur;
+// üstündeyse sadece kameranın görebileceği alan + tampon kadarı yüklenir, dışına çıkan tile'lar boşaltılır.
+const VIEWPORT_RENDER_THRESHOLD = 6000; // tile sayısı
+let viewportRenderActive = false;
+let lastViewportChunk = null; // {x0,y0,x1,y1} son yüklenen alan, gereksiz tekrar taramayı önler
+function renderAllTiles(){
+  Object.values(tileSprites).forEach(s=>world.removeChild(s));
+  for(const k in tileSprites) delete tileSprites[k];
+  for(const k in hpMap) delete hpMap[k];
+  lastViewportChunk=null;
+  viewportRenderActive = (WORLD_W*WORLD_H) > VIEWPORT_RENDER_THRESHOLD;
+  if(!viewportRenderActive){
+    for(let y=0;y<WORLD_H;y++) for(let x=0;x<WORLD_W;x++) renderTile(x,y);
+  } else {
+    updateViewportTiles(true);
+  }
+}
+// Kamera merkezli görünür alan + tampon kadar tile yükler, dışına çıkanları boşaltır.
+// force=true ise chunk aynı olsa bile yeniden hesaplar (dünyaya ilk girişte kullanılır).
+function updateViewportTiles(force){
+  if(!viewportRenderActive || !worldData) return;
+  const bufferTiles = 6;
+  const viewW = Math.ceil(app.renderer.width/(TILE*zoom))+bufferTiles*2;
+  const viewH = Math.ceil(app.renderer.height/(TILE*zoom))+bufferTiles*2;
+  const centerTx = Math.floor(player.x/TILE), centerTy = Math.floor(player.y/TILE);
+  const x0=Math.max(0,centerTx-Math.floor(viewW/2)), x1=Math.min(WORLD_W-1,centerTx+Math.floor(viewW/2));
+  const y0=Math.max(0,centerTy-Math.floor(viewH/2)), y1=Math.min(WORLD_H-1,centerTy+Math.floor(viewH/2));
+  if(!force && lastViewportChunk && x0===lastViewportChunk.x0 && y0===lastViewportChunk.y0 && x1===lastViewportChunk.x1 && y1===lastViewportChunk.y1) return;
+  lastViewportChunk={x0,y0,x1,y1};
+  // görünür alan dışına çıkan sprite'ları temizle
+  for(const key in tileSprites){
+    const [tx,ty]=key.split('_').map(Number);
+    if(tx<x0||tx>x1||ty<y0||ty>y1){ world.removeChild(tileSprites[key]); delete tileSprites[key]; delete hpMap[key]; }
+  }
+  // görünür alandaki eksik sprite'ları oluştur
+  for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){ if(!tileSprites[x+'_'+y]) renderTile(x,y); }
+}
+let plants=[]; const plantSprites={};
+function plantStage(p){
+  const el=(Date.now()-p.plantedAt)/1000, total=ITEMS[p.itemId].growSeconds, frac=Math.min(1,el/total);
+  if(frac>=1) return 'ready'; if(frac>0.66) return 'stage3'; if(frac>0.33) return 'stage2'; return 'stage1';
+}
+function renderPlants(){
+  Object.values(plantSprites).forEach(s=>world.removeChild(s));
+  for(const k in plantSprites) delete plantSprites[k];
+  plants.forEach(p=>{
+    const stage=plantStage(p), it=ITEMS[p.itemId];
+    const g=new PIXI.Graphics();
+    const h=stage==='stage1'?6:stage==='stage2'?14:stage==='stage3'?22:28;
+    g.beginFill(0x5a3d1f); g.drawRect(-2,-h*0.3,4,h*0.3); g.endFill();
+    g.beginFill(it.color); g.drawCircle(0,-h*0.3-6, stage==='ready'?11:5); g.endFill();
+    g.lineStyle(1.4,0x000000,0.4); g.drawCircle(0,-h*0.3-6, stage==='ready'?11:5); g.lineStyle(0);
+    if(stage==='ready'){ g.lineStyle(2,0xffe680); g.drawCircle(0,-h*0.3-6,14); g.lineStyle(0); }
+    g.x=p.x*TILE+16; g.y=p.y*TILE+32; g.zIndex=2;
+    world.addChild(g); plantSprites[p.x+'_'+p.y]=g;
+  });
+}
+
+/* ---------- Ortam canlılığı: havada süzülen parıldayan zerrecikler ---------- */
+let ambient=[];
+let doorSprite=null;
+function createSpawnDoor(){
+  if(doorSprite){ world.removeChild(doorSprite); doorSprite=null; }
+  const d=new PIXI.Container();
+  const g=new PIXI.Graphics();
+  // sci-fi/kapı çerçevesi
+  g.beginFill(0x2b3a4a); g.drawRoundedRect(-14,-30,28,30,4); g.endFill();
+  g.lineStyle(2,0x6fe3ff,0.9); g.drawRoundedRect(-14,-30,28,30,4); g.lineStyle(0);
+  g.beginFill(0x0e1620); g.drawRoundedRect(-10,-26,20,22,3); g.endFill();
+  g.beginFill(0x1c7a99,0.55); g.drawRoundedRect(-10,-26,20,22,3); g.endFill();
+  g.lineStyle(1.4,0x9df3ff,0.8); g.moveTo(0,-26); g.lineTo(0,-4); g.lineStyle(0);
+  g.beginFill(0x9df3ff,0.9); g.drawCircle(-6,-15,1.6); g.drawCircle(6,-15,1.6); g.endFill();
+  d.addChild(g);
+  const label=new PIXI.Text('Çıkış',{fontFamily:'Trebuchet MS',fontSize:10,fill:0xbdf3ff,stroke:0x000000,strokeThickness:3});
+  label.anchor.set(0.5); label.y=-36; d.addChild(label);
+  const dtx = (worldData && worldData.doorTx!=null) ? worldData.doorTx : DOOR_TX;
+  const dty = (worldData && worldData.doorTy!=null) ? worldData.doorTy : DOOR_TY;
+  d.x = dtx*TILE+16; d.y = dty*TILE+32; d.zIndex=6;
+  d.eventMode='static'; d.cursor='pointer';
+  d.on('pointerdown', ()=>{
+    const ptx=Math.floor(player.x/TILE), pty=Math.floor(player.y/TILE);
+    if(Math.abs(ptx-dtx)<=2 && Math.abs(pty-dty)<=2){ playSfx('button'); exitToWorldScreen(); }
+    else addChatMsg('world','Sistem','Kapıya yaklaşman lazım.');
+  });
+  world.addChild(d); doorSprite=d;
+}
+function initAmbient(){
+  ambient.forEach(a=>world.removeChild(a.g)); ambient=[];
+  for(let i=0;i<22;i++){
+    const g=new PIXI.Graphics();
+    const col=[0xfff2a8,0x9be7ff,0xffd6f0][i%3];
+    g.beginFill(col,0.8); g.drawCircle(0,0,1.4+Math.random()*1.2); g.endFill();
+    g.beginFill(col,0.25); g.drawCircle(0,0,4); g.endFill();
+    g.x=Math.random()*WORLD_W*TILE; g.y=Math.random()*WORLD_H*TILE; g.zIndex=4;
+    world.addChild(g);
+    ambient.push({g, baseX:g.x, t:Math.random()*10, spd:0.3+Math.random()*0.4});
+  }
+}
+function updateAmbient(delta){
+  ambient.forEach(a=>{
+    a.t+=delta*0.02*a.spd;
+    a.g.y -= 0.15*a.spd*delta;
+    a.g.x = a.baseX + Math.sin(a.t*3)*14;
+    a.g.alpha = 0.5+Math.sin(a.t*5)*0.5;
+    if(a.g.y< -20){ a.g.y = WORLD_H*TILE+10; a.baseX=Math.random()*WORLD_W*TILE; }
+  });
+}
+
+/* ---------- Parçacık patlaması (blok kırılınca) ---------- */
+let particles=[];
+function spawnParticles(tx,ty,palette){
+  for(let i=0;i<10;i++){
+    const p=new PIXI.Graphics();
+    const col=palette[Math.floor(Math.random()*palette.length)];
+    p.beginFill(col); p.drawRect(0,0,3+Math.random()*3,3+Math.random()*3); p.endFill();
+    p.x=tx*TILE+16; p.y=ty*TILE+16; p.zIndex=6; world.addChild(p);
+    particles.push({g:p, vx:(Math.random()-0.5)*5, vy:-Math.random()*5-1, life:0, max:0.6+Math.random()*0.4});
+  }
+}
+function updateParticles(delta){
+  for(let i=particles.length-1;i>=0;i--){
+    const pt=particles[i]; pt.life+=delta/60;
+    pt.vy+=GRAVITY*0.4*delta;
+    pt.g.x+=pt.vx*delta; pt.g.y+=pt.vy*delta;
+    pt.g.alpha = Math.max(0, 1-pt.life/pt.max);
+    if(pt.life>=pt.max){ world.removeChild(pt.g); particles.splice(i,1); }
+  }
+}
+
+/* ---------- Düşen itemler (sunucu kaynaklı, sabit konumlu) ---------- */
+let drops=[]; // {id,x,y,itemId,count,graphic,collecting}
+function spawnDrop(tx,ty,itemId,id,count){
+  count = count||1;
+  const isGem = itemId==='gem';
+  const gemTexId = isGem ? (count>=10?'gem_large':count>=5?'gem_medium':'gem_small') : itemId;
+  const size = isGem ? (count>=10?18:count>=5?15:12) : 18;
+  const g=new PIXI.Sprite(tex(gemTexId)); g.width=size; g.height=size; g.anchor.set(0); g.zIndex=3;
+  const cont=new PIXI.Container(); cont.addChild(g); cont.zIndex=3;
+  if(count>1){
+    const qty=new PIXI.Text(String(count),{fontFamily:'Trebuchet MS',fontSize:10,fontWeight:'bold',fill:0xffffff,stroke:0x000000,strokeThickness:3});
+    qty.anchor.set(1,1); qty.x=size+2; qty.y=size+3; cont.addChild(qty);
+  }
+  const baseX=tx*TILE+16-size/2, baseY=ty*TILE+16-size/2;
+  cont.x=baseX; cont.y=baseY; world.addChild(cont);
+  const d = {id, x:tx*TILE+16, y:ty*TILE+16, itemId, count, graphic:cont, bobSeed:Math.random()*10, collecting:false};
+  drops.push(d);
+  return d;
+}
+function updateDrops(delta){
+  drops.forEach(d=>{
+    const bob = Math.sin(Date.now()/650 + d.bobSeed)*2.5;
+    const half = (d.itemId==='gem') ? (d.count>=10?9:d.count>=5?7.5:6) : 9;
+    d.graphic.x = d.x-half; d.graphic.y = d.y-half+bob;
+    if(d.collecting) return;
+    const dx=d.x-player.x, dy=d.y-player.y;
+    const playerOverlapping = Math.abs(dx)<20 && Math.abs(dy)<26;
+    if(playerOverlapping){ d.collecting=true; collectDrop(d); }
+  });
+}
+async function collectDrop(d){
+  try{
+    const resp = await emitAsync('drop:collect', {id:d.id});
+    const gemsBefore=gems;
+    gems = resp.gems; inventory = resp.inventory;
+    $('gemCount').textContent=gems;
+    if(d.itemId==='gem'){ floatGemAt(player.x, player.y, gems-gemsBefore); playSfx('gem'); } else { playSfx('pickup'); }
+    buildHotbarUI();
+  }catch(e){ d.collecting=false; } // toplanamadıysa (başkası aldı vb.) tekrar denenebilsin
+}
+function floatGemAt(wx,wy,amount){
+  const sx=wx*zoom-camX, sy=wy*zoom-camY;
+  const el=document.createElement('div'); el.className='floatgem'; el.textContent='+'+amount+' 💎';
+  el.style.left=sx+'px'; el.style.top=sy+'px'; $('floatText').appendChild(el);
+  setTimeout(()=>el.remove(),1000);
+}
+
+/* ---------- Hesap / dünya akışı ---------- */
+$('btnPlay').onclick=()=>{
+  hide('mainMenu');
+  if(currentUser){ show('worldScreen'); $('gemPreview').textContent=gems; refreshWorldList(); }
+  else show('loginScreen');
+};
+$('btnHow').onclick=()=>alert("A/D: hareket, W veya Space: zıplama (kanat varsa havada tekrar basınca çift zıplarsın)\nSOL TIK basılı tut: envanterden YUMRUK seçiliyken blok kır (aralık: etrafındaki ~2-3 blok)\nSAĞ TIK: elindeki bloğu/tohumu/World Lock'u yerleştir (tohum boş karonun ALTINDA toprak varsa dikilir)\nOlgun bitkiye SOL tık: hasat et\nKırılan bloktan gem/tohum/blok şansa göre yere düşer, üzerine gel topla\nFare tekerleği: yakınlaş/uzaklaş\n1-8: hotbar, E: envanter\nEnter: chat aç ve yaz (max 140 karakter), Esc: kapat");
+$('btnBackMenu').onclick=()=>{ hide('loginScreen'); show('mainMenu'); };
+
+$('btnLogin').onclick=async()=>{
+  const name=$('loginName').value.trim(), pass=$('loginPass').value;
+  if(!name||!pass){ $('loginMsg').textContent='İsim ve şifre gir.'; return; }
+  $('loginMsg').textContent='Giriş yapılıyor...';
+  try{
+    const data = await apiPost('/api/auth/login', {username:name, password:pass});
+    authToken = data.token; currentUser = data.user; inventory = data.user.inventory || [];
+    worn = data.user.worn || {wings:null}; gems = data.user.gems || 0; wingsEquipped = !!worn.wings;
+    hotbar=['fist', inventory.find(i=>i.id==='dirt')?.id, inventory.find(i=>i.id==='seed_pepper')?.id, null,null,null,null,null];
+    $('loginMsg').textContent=''; hide('loginScreen'); show('worldScreen');
+    $('gemPreview').textContent=gems; refreshWorldList();
+  }catch(e){
+    $('loginMsg').textContent = e.message || 'Hatalı kullanıcı adı veya şifre.';
+  }
+};
+
+$('btnRegister').onclick=async()=>{
+  const name=$('loginName').value.trim(), pass=$('loginPass').value;
+  if(!name||!pass){ $('loginMsg').textContent='İsim ve şifre gir.'; return; }
+  $('loginMsg').textContent='Hesap oluşturuluyor...';
+  try{
+    const data = await apiPost('/api/auth/register', {username:name, password:pass});
+    authToken = data.token; currentUser = data.user; inventory = data.user.inventory || [];
+    worn = data.user.worn || {wings:null}; gems = data.user.gems || 0; wingsEquipped = !!worn.wings;
+    hotbar=['fist', inventory.find(i=>i.id==='dirt')?.id, inventory.find(i=>i.id==='seed_pepper')?.id, null,null,null,null,null];
+    $('loginMsg').textContent=''; hide('loginScreen'); show('worldScreen');
+    $('gemPreview').textContent=gems; refreshWorldList();
+  }catch(e){
+    $('loginMsg').textContent = e.message || 'Kayıt olunamadı.';
+  }
+};
+async function refreshWorldList(){
+  const list=$('worldList'); list.innerHTML='<div style="opacity:.6;font-size:11px">Yükleniyor...</div>';
+  try{
+    const {worlds} = await apiGet('/api/worlds');
+    list.innerHTML='';
+    if(!worlds.length){ list.innerHTML='<div style="opacity:.6;font-size:11px">Henüz aktif dünya yok, bir tane oluştur!</div>'; return; }
+    worlds.forEach(w=>{
+      const d=document.createElement('div'); d.className='worldItem';
+      d.innerHTML=`<span>${w.locked?'🔒':'🌍'} ${w.name} <span style="opacity:.6">(${w.owner}, 👤${w.online})</span></span>`;
+      const btn=document.createElement('button'); btn.textContent='Gir'; btn.style.fontSize='11px'; btn.style.padding='4px 8px';
+      btn.onclick=()=>enterWorld(w.name); d.appendChild(btn); list.appendChild(d);
+    });
+  }catch(e){ list.innerHTML='<div style="color:#ffb3b3;font-size:11px">Dünyalar yüklenemedi: '+e.message+'</div>'; }
+}
+$('btnEnterWorld').onclick=()=>{ const wn=$('worldName').value.trim().toUpperCase(); if(wn) enterWorld(wn); };
+$('btnLogout').onclick=()=>{ if(socket) socket.disconnect(); currentUser=null; authToken=null; hide('worldScreen'); show('mainMenu'); };
+
+$('btnFriendsToggle').onclick=()=> openFriendsModal();
+$('btnCloseFriends').onclick=()=> hide('friendsModal');
+
+async function openFriendsModal(){
+  show('friendsModal');
+  const box=$('friendsList'); box.innerHTML='<div style="opacity:.6;font-size:11px">Yükleniyor...</div>';
+  try{
+    const resp=await emitAsync('friend:list', {});
+    box.innerHTML='';
+    if(!resp.friends || !resp.friends.length){
+      box.innerHTML='<div style="opacity:.6;font-size:11px">Henüz hiç arkadaşın yok. Aşağıdan kullanıcı adı yazıp ekleyebilirsin!</div>';
+      return;
+    }
+    resp.friends.forEach(f=>{
+      const row=document.createElement('div'); row.className='accessRow';
+      row.innerHTML=`<span><span style="color:${f.isOnline?'#39ff6a':'#888'}">●</span> <b>${f.username}</b> <span style="opacity:.6;font-size:10px">${f.isOnline? '('+f.worldName+')': '(Çevrimdışı)'}</span></span>`;
+      if(f.isOnline && f.worldName && f.worldName!==currentWorldName){
+        const tpBtn=document.createElement('button'); tpBtn.textContent='Yanına Git'; tpBtn.style.fontSize='10px'; tpBtn.style.padding='3px 6px'; tpBtn.className='green';
+        tpBtn.onclick=()=>{ hide('friendsModal'); enterWorld(f.worldName); };
+        row.appendChild(tpBtn);
+      }
+      box.appendChild(row);
+    });
+  }catch(e){ box.innerHTML='<div style="color:#ffb3b3;font-size:11px">'+e.message+'</div>'; }
+}
+
+$('btnFriendAddSubmit').onclick=async()=>{
+  const name=$('friendAddInput').value.trim();
+  if(!name) return;
+  try{
+    const resp=await emitAsync('friend:add', {targetUsername:name});
+    addChatMsg('world','Sistem', `👥 ${resp.added} arkadaş listene eklendi!`);
+    $('friendAddInput').value='';
+    openFriendsModal();
+  }catch(e){ alert(e.message); }
+};
+
+function connectSocket(){
+  return new Promise((resolve,reject)=>{
+    socket = io(API_BASE, {transports:['websocket']});
+    socket.on('connect_error', (e)=> reject(new Error('Sunucuya bağlanılamadı: '+e.message)));
+    socket.once('connect', resolve);
+  });
+}
+function wireSocketEvents(){
+  socket.off(); // önceki dünyadan kalan dinleyicileri temizle
+  socket.on('player:join', (p)=>{ if(p.id !== socket.id) addRemotePlayer(p); });
+  socket.on('player:moved', (p)=> moveRemotePlayer(p));
+  socket.on('player:leave', (p)=> removeRemotePlayer(p.id));
+  socket.on('player:wornChanged', (p)=> setRemoteWorn(p.id, p.worn));
+  socket.on('block:hit', ({tx,ty})=>{ shakeTile(tx,ty); spawnParticles(tx,ty, ITEMS[worldData.tiles[ty][tx]]?.palette||[0xcccccc,0x999999]); playSfx('hit'); });
+  socket.on('block:broken', ({tx,ty,drops})=>{
+    const existing=worldData.tiles[ty][tx];
+    if(existing==='worldlock'){ worldData.locked=false; updateLockInfo(); }
+    worldData.tiles[ty][tx]=null; renderTileAndNeighbors(tx,ty);
+    playSfx('break');
+    (drops||[]).forEach((d,i)=> setTimeout(()=> spawnDrop(d.tx, d.ty, d.itemId, d.id, d.count), i*70));
+    buildHotbarUI();
+  });
+  socket.on('block:placed', ({tx,ty,itemId})=>{
+    worldData.tiles[ty][tx]=itemId; renderTileAndNeighbors(tx,ty);
+    if(itemId==='worldlock'){ worldData.locked=true; updateLockInfo(); }
+  });
+  socket.on('drop:spawned', (d)=> spawnDrop(d.tx, d.ty, d.itemId, d.id, d.count));
+  socket.on('drop:removed', ({id})=>{
+    const d=drops.find(x=>x.id===id);
+    if(d){ world.removeChild(d.graphic); drops=drops.filter(x=>x.id!==id); }
+  });
+  socket.on('plant:added', (p)=>{ plants.push({x:p.tx,y:p.ty,itemId:p.seedId,plantedAt:p.plantedAt}); renderPlants(); });
+  socket.on('plant:removed', ({tx,ty})=>{ plants=plants.filter(p=>!(p.x===tx&&p.y===ty)); renderPlants(); });
+  socket.on('world:lockChanged', ({locked, ownerUsername})=>{ worldData.locked=locked; if(ownerUsername) worldData.owner=ownerUsername; updateLockInfo(); });
+  socket.on('world:accessUpdated', ({access})=>{ worldData.allow=access; updateLockInfo(); if(!$('lockModal').classList.contains('hidden')) renderAccessList(); });
+  socket.on('chat:message', (m)=> handleIncomingChat(m));
+  socket.on('trade:incoming', ({fromSocketId, fromUsername})=>{
+    playSfx('trade');
+    addChatMsg('world','Sistem', `🔁 ${fromUsername} sana trade isteği gönderdi! Wrench ile ona tıklayıp Trade İsteği Gönder'e basarak katılabilirsin.`);
+    pendingTradeFrom = {fromSocketId, fromUsername};
+  });
+  socket.on('trade:started', ({sessionId, otherUsername, youAreA})=> openTradeWindow(sessionId, otherUsername, youAreA));
+  socket.on('trade:offerUpdated', (data)=> updateTradeOffers(data));
+  socket.on('trade:review', (data)=> showTradeReview(data));
+  socket.on('trade:completed', ({yourInventory})=>{
+    inventory=yourInventory; buildFullInv(); buildHotbarUI();
+    addChatMsg('world','Sistem','✅ Trade tamamlandı!'); playSfx('merge');
+    hide('tradeModal'); hide('tradeReviewModal'); currentTradeSession=null;
+  });
+  socket.on('trade:cancelled', ({reason})=>{
+    addChatMsg('world','Sistem', '❌ Trade iptal edildi: '+(reason||''));
+    hide('tradeModal'); hide('tradeReviewModal'); currentTradeSession=null;
+  });
+  socket.on('shop:listingUpdated', ({shopId, listings})=>{
+    if(shopId===currentShopId && !$('shopModal').classList.contains('hidden')){
+      const isOwner = $('shopManageBox') && !$('shopManageBox').classList.contains('hidden');
+      renderShopListings(listings, isOwner);
+    }
+  });
+  socket.on('shop:sale', ({itemId, count, totalPrice, buyerUsername})=>{
+    addChatMsg('world','Sistem', `💰 ${buyerUsername}, dükkanından ${count}x ${ITEMS[itemId].name} aldı (+${totalPrice} Gems)`);
+    playSfx('merge');
+  });
+  socket.on('shop:removed', ({shopId})=>{ if(shopId===currentShopId){ hide('shopModal'); currentShopId=null; } });
+  socket.on('matrix:enter', async ({targetWorld})=>{
+    if (enteringWorld) return;
+    enteringWorld = true;
+    addChatMsg('world','Sistem', 'Matrix\'e bağlanılıyor... Lütfen bekleyin.');
+    
+    // 3-2-1 Geri sayım arayüzü
+    const cd = document.createElement('div');
+    cd.style.cssText = 'position:absolute;inset:0;background:rgba(0,0,0,0.85);color:#0f0;font-family:monospace;font-size:72px;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;text-shadow:0 0 20px #0f0;';
+    cd.innerHTML = '<div id="mCount">3</div><div style="font-size:24px;margin-top:20px;opacity:0.7">Sisteme Sızılıyor...</div>';
+    document.body.appendChild(cd);
+    
+    let c = 3;
+    const t = setInterval(async ()=>{
+      c--;
+      if(c > 0) { document.getElementById('mCount').textContent = c; playSfx('button'); }
+      else {
+        clearInterval(t);
+        cd.innerHTML = '<div style="font-size:48px">BAĞLANTI KURULDU</div>';
+        playSfx('merge');
+        setTimeout(async ()=>{
+          document.body.removeChild(cd);
+          enteringWorld = false; // enterWorld içindeki kontrolden geçmesi için
+          try{ if(socket) socket.disconnect(); await enterWorld(targetWorld, {skipCreate:true}); }
+          catch(e){ addChatMsg('world','Sistem', e.message); enteringWorld=false; }
+        }, 1000);
+      }
+    }, 1000);
+  });
+  socket.on('chat:whisper', ({from, text, ts})=>{
+    addChatMsg(chatTab, `(fısıltı) ${from}`, text);
+    playSfx('button');
+  });
+  // Dünya sahibi /kick veya /ban attığında sunucu bu event'i gönderir: oyuncu "ölür" ve spawn kapısında yeniden doğar.
+  socket.on('player:kicked', ({x,y,reason})=>{
+    player.x=x; player.y=y; player.vx=0; player.vy=0;
+    showDeathFlash(reason||'Kicklendin!');
+  });
+  socket.on('matrix:missionEnded', ({success, reward, reason})=>{
+    endActiveMission();
+    $('missionEndTitle').textContent = success ? '✅ Görev Tamamlandı' : '❌ Görev Başarısız';
+    $('missionEndText').textContent = success
+      ? `Tebrikler! Ödül: ${reward && ITEMS[reward] ? ITEMS[reward].name : reward}`
+      : (reason || 'Görev tamamlanamadı.');
+    show('missionEndModal');
+    playSfx(success?'merge':'error');
+  });
+  socket.on('matrix:layoutChanged', ({reason})=>{
+    addChatMsg('world','Sistem', '🌐 '+(reason||'Matrix yeniden düzenlendi.'));
+  });
+  socket.on('disconnect', ()=>{ if(gameRunning) addChatMsg('world','Sistem','Sunucu bağlantısı koptu, yeniden bağlanmayı deniyorum...'); });
+  if (typeof setupExtraSocketEvents === 'function') setupExtraSocketEvents();
+}
+
+let enteringWorld=false;
+async function enterWorld(name, opts){
+  opts = opts || {};
+  if(enteringWorld) return;
+  enteringWorld=true;
+  try{
+    await ensureCharacterReady();
+    if(!opts.skipCreate) await apiPost('/api/worlds', {name}, true);
+    if(!socket || !socket.connected) await connectSocket();
+    wireSocketEvents();
+    const resp = await emitAsync('auth:join', {token:authToken, worldName:name});
+    currentWorldName = resp.world.name;
+    // Dünya boyutu sabit değil: normal dünyalar 100x34, Matrix 300x100 — her girişte gelen tiles'a göre ayarlanır.
+    WORLD_H = resp.world.tiles.length;
+    WORLD_W = resp.world.tiles[0] ? resp.world.tiles[0].length : 100;
+    worldData = { name:resp.world.name, owner:resp.world.ownerUsername, locked:resp.world.locked, allow:resp.world.access, tiles:resp.world.tiles, isMatrix:!!resp.world.isMatrix, doorTx:resp.world.doorTx, doorTy:resp.world.doorTy };
+    plants = (resp.world.plants||[]).map(p=>({x:p.tx,y:p.ty,itemId:p.seedId,plantedAt:p.plantedAt}));
+    inventory = resp.you.inventory; gems = resp.you.gems; worn = resp.you.worn||{wings:null}; wingsEquipped=!!worn.wings;
+    maybeShowAdminPanel(resp.you.isAdmin);
+    charSprite._wingId=null; setCharWing(charSprite, worn.wings);
+
+    clearRemotePlayers();
+    resp.players.forEach(p=>{ if(p.id !== socket.id) addRemotePlayer(p); });
+    clearMatrixEntities();
+    if(worldData.isMatrix){ spawnMatrixNpcs(resp.world.npcs); spawnMatrixBooths(resp.world.booths); }
+
+    hide('worldScreen'); world.visible=true; bgLayer.visible=true;
+    applyMatrixTheme(worldData.isMatrix);
+    renderAllTiles(); renderPlants();
+    drops.forEach(d=>world.removeChild(d.graphic)); drops=[];
+    (resp.world.drops||[]).forEach(d=> spawnDrop(d.tx, d.ty, d.itemId, d.id, d.count));
+    initAmbient(); createSpawnDoor();
+    player.x = resp.you.spawnX!=null ? resp.you.spawnX : DOOR_TX*TILE+16;
+    player.y = resp.you.spawnY!=null ? resp.you.spawnY : DOOR_TY*TILE;
+    player.vx=0; player.vy=0;
+    show('hud'); show('topbar'); show('shopBtnWrap'); show('invBar'); buildHotbarUI(); updateLockInfo();
+    addChatMsg('world','Sistem', worldData.isMatrix ? 'Matrix dünyasına giriş yaptın.' : `"${name}" dünyasına hoş geldin!`);
+    SoundEngine.stopMusic();
+    gameRunning=true;
+  }catch(e){
+    alert('Dünyaya girilemedi: '+e.message);
+  }finally{
+    enteringWorld=false;
+  }
+}
+async function sitInChair(){
+  try{
+    const resp = await emitAsync('chair:sit', {});
+    if(socket) socket.disconnect();
+    await enterWorld(resp.targetWorld, {skipCreate:true});
+  }catch(e){ addChatMsg('world','Sistem', e.message); }
+}
+function updateLockInfo(){
+  $('lockInfo').classList.remove('hidden');
+  const names = (worldData.allow||[]).map(e=> typeof e==='string' ? e : e.username);
+  $('lockInfo').textContent = worldData.locked
+    ? `🔒 KİLİTLİ — sahibi: ${worldData.owner} | erişim: ${names.join(', ')||'(yok)'}`
+    : '🔓 Açık dünya — herkes yapı yapabilir';
+}
+
+/* ---------- Menü / Lock / Store ---------- */
+window.addEventListener('keydown', e=>{
+  if(e.key!=='Escape') return;
+  if(chatOpen){ chatOpen=false; $('chatWrap').classList.remove('open'); $('chatInput').blur(); return; }
+  if(!worldData) return;
+  const pauseVisible = !$('pauseMenu').classList.contains('hidden');
+  if(pauseVisible){ hide('pauseMenu'); gameRunning=true; }
+  else if(gameRunning){ $('pauseWorldName').textContent='Dünya: '+currentWorldName; show('pauseMenu'); gameRunning=false; playSfx('button'); }
+});
+$('btnPauseOpen').onclick=()=>{ $('pauseWorldName').textContent='Dünya: '+currentWorldName; show('pauseMenu'); gameRunning=false; };
+$('btnResume').onclick=()=>{ hide('pauseMenu'); gameRunning=true; };
+function exitToWorldScreen(){
+  if(socket) socket.disconnect();
+  hide('pauseMenu'); hide('hud'); hide('topbar'); hide('shopBtnWrap'); hide('invBar'); hide('fullInv'); hide('lockInfo');
+  $('chatWrap').classList.remove('open'); $('growTooltip').classList.add('hidden');
+  gameRunning=false;
+  world.visible=false; bgLayer.visible=false;
+  applyMatrixTheme(false);
+  clearRemotePlayers();
+  clearMatrixEntities();
+  if(activeMission) endActiveMission();
+  currentWorldName=null; worldData=null;
+  hide('mainMenu'); show('worldScreen'); $('gemPreview').textContent=gems; refreshWorldList();
+  SoundEngine.startMusic();
+}
+$('btnExitWorld').onclick=()=>exitToWorldScreen();
+function respawnPlayer(flashReason){
+  const dtx = (worldData && worldData.doorTx!=null) ? worldData.doorTx : DOOR_TX;
+  const dty = (worldData && worldData.doorTy!=null) ? worldData.doorTy : DOOR_TY;
+  player.x=dtx*TILE+16; player.y=dty*TILE; player.vx=0; player.vy=0;
+  if(flashReason) showDeathFlash(flashReason);
+}
+$('btnRespawn').onclick=()=>{
+  respawnPlayer();
+  hide('pauseMenu'); gameRunning=true; playSfx('button');
+};
+// Kısa, ekranı kaplamayan kırmızı flaş + üst kısımda sebep mesajı — büyük modal açmadan geri bildirim verir.
+function showDeathFlash(reason){
+  let el=document.getElementById('deathFlash');
+  if(!el){
+    el=document.createElement('div'); el.id='deathFlash';
+    el.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9990;background:rgba(200,20,20,0.35);opacity:0;transition:opacity .15s;';
+    document.body.appendChild(el);
+    const label=document.createElement('div'); label.id='deathFlashLabel';
+    label.style.cssText='position:fixed;top:18%;left:50%;transform:translateX(-50%);color:#fff;font-weight:bold;font-size:15px;text-shadow:0 2px 4px #000;z-index:9991;pointer-events:none;opacity:0;transition:opacity .15s;';
+    document.body.appendChild(label);
+  }
+  const label=document.getElementById('deathFlashLabel');
+  label.textContent=reason||'Kicklendin';
+  el.style.opacity='1'; label.style.opacity='1';
+  playSfx('hurt');
+  setTimeout(()=>{ el.style.opacity='0'; label.style.opacity='0'; }, 900);
+}
+
+$('btnOpenLock').onclick=()=>{ hide('pauseMenu'); openLockModal(); };
+$('btnCloseLock').onclick=()=>{ hide('lockModal'); show('pauseMenu'); };
+/* ---------- Oyuncu kartı (wrench ile tıklama) ---------- */
+let pendingTradeFrom=null, activePlayerCard=null;
+function openPlayerCard(rp){
+  activePlayerCard=rp;
+  $('pcName').textContent=rp.username;
+  $('pcStatus').textContent='Bu dünyada, seninle birlikte';
+  show('playerCardModal');
+}
+$('pcClose').onclick=()=>hide('playerCardModal');
+$('pcTrade').onclick=async()=>{
+  if(!activePlayerCard) return;
+  try{
+    await emitAsync('trade:request', {targetSocketId: activePlayerCard.socketId||activePlayerCard.id});
+    addChatMsg('world','Sistem', `Trade isteği ${activePlayerCard.username} kullanıcısına gönderildi.`);
+    hide('playerCardModal');
+  }catch(e){ alert(e.message); }
+};
+$('pcAddFriend').onclick=async()=>{
+  if(!activePlayerCard) return;
+  try{
+    const resp=await emitAsync('friend:add', {targetUsername: activePlayerCard.username});
+    addChatMsg('world','Sistem', `👥 ${resp.added||activePlayerCard.username} arkadaş listene eklendi.`);
+    hide('playerCardModal');
+  }catch(e){ alert(e.message); }
+};
+
+/* ---------- Trade sistemi ---------- */
+let currentTradeSession=null;
+function openTradeWindow(sessionId, otherUsername, youAreA){
+  currentTradeSession={sessionId, otherUsername, youAreA, myOffer:[], theirOffer:[]};
+  $('tradeOtherName').textContent=otherUsername; $('tradeOtherName2').textContent=otherUsername;
+  $('tradeStatusText').textContent='Eşya ekleyip Onayla\'ya bas.';
+  renderTradeInvPicker(); renderTradeSlots();
+  show('tradeModal'); hide('playerCardModal');
+  playSfx('button');
+}
+function renderTradeInvPicker(){
+  const box=$('tradeInvPicker'); box.innerHTML='';
+  inventory.filter(i=>worn.wings!==i.id).forEach(inv=>{
+    const cell=document.createElement('div'); cell.className='slot';
+    const c=document.createElement('canvas'); c.width=32;c.height=32; drawTexToCanvas(inv.id,c); cell.appendChild(c);
+    const q=document.createElement('div'); q.className='qty'; q.textContent=inv.count; cell.appendChild(q);
+    cell.title=ITEMS[inv.id].name;
+    cell.onclick=async()=>{
+      const amt=await askDropQuantity(inv.count, `${ITEMS[inv.id].name} — kaç tane teklif ediyorsun?`, '🔁 Teklife Ekle');
+      if(!amt) return;
+      try{ await emitAsync('trade:setItem', {sessionId:currentTradeSession.sessionId, itemId:inv.id, count:amt}); }
+      catch(e){ addChatMsg('world','Sistem', e.message); }
+    };
+    box.appendChild(cell);
+  });
+}
+function renderTradeSlots(){
+  if(!currentTradeSession) return;
+  const mine=$('tradeMySlots'), theirs=$('tradeTheirSlots');
+  mine.innerHTML=''; theirs.innerHTML='';
+  currentTradeSession.myOffer.forEach(o=>{
+    const cell=document.createElement('div'); cell.className='slot';
+    const c=document.createElement('canvas'); c.width=32;c.height=32; drawTexToCanvas(o.id,c); cell.appendChild(c);
+    const q=document.createElement('div'); q.className='qty'; q.textContent=o.count; cell.appendChild(q);
+    cell.title=ITEMS[o.id].name+' — çıkarmak için tıkla';
+    cell.onclick=async()=>{ try{ await emitAsync('trade:setItem', {sessionId:currentTradeSession.sessionId, itemId:o.id, count:0}); }catch(e){} };
+    mine.appendChild(cell);
+  });
+  currentTradeSession.theirOffer.forEach(o=>{
+    const cell=document.createElement('div'); cell.className='slot';
+    const c=document.createElement('canvas'); c.width=32;c.height=32; drawTexToCanvas(o.id,c); cell.appendChild(c);
+    const q=document.createElement('div'); q.className='qty'; q.textContent=o.count; cell.appendChild(q);
+    cell.title=ITEMS[o.id].name;
+    theirs.appendChild(cell);
+  });
+}
+function updateTradeOffers({sessionId, offerA, offerB, readyA, readyB}){
+  if(!currentTradeSession || currentTradeSession.sessionId!==sessionId) return;
+  if(currentTradeSession.youAreA){ currentTradeSession.myOffer=offerA; currentTradeSession.theirOffer=offerB; }
+  else { currentTradeSession.myOffer=offerB; currentTradeSession.theirOffer=offerA; }
+  renderTradeSlots(); renderTradeInvPicker();
+  const myReady = currentTradeSession.youAreA?readyA:readyB, theirReady = currentTradeSession.youAreA?readyB:readyA;
+  $('tradeStatusText').textContent = myReady ? 'Onayladın, karşı tarafı bekliyorsun...' : (theirReady ? `${currentTradeSession.otherUsername} onayladı, sıra sende.` : 'Eşya ekleyip Onayla\'ya bas.');
+}
+$('btnTradeReady').onclick=async()=>{
+  if(!currentTradeSession) return;
+  try{ await emitAsync('trade:ready', {sessionId:currentTradeSession.sessionId}); playSfx('button'); }catch(e){}
+};
+$('btnTradeCancel').onclick=async()=>{
+  if(!currentTradeSession) return;
+  try{ await emitAsync('trade:cancel', {sessionId:currentTradeSession.sessionId}); }catch(e){}
+  hide('tradeModal'); currentTradeSession=null;
+};
+function showTradeReview({sessionId, offerMine, offerTheirs}){
+  hide('tradeModal'); show('tradeReviewModal');
+  $('reviewMine').innerHTML = offerMine.length ? offerMine.map(o=>`${ITEMS[o.id].name} x${o.count}`).join('<br>') : '<i>(hiçbir şey)</i>';
+  $('reviewTheirs').innerHTML = offerTheirs.length ? offerTheirs.map(o=>`${ITEMS[o.id].name} x${o.count}`).join('<br>') : '<i>(hiçbir şey)</i>';
+}
+$('btnReviewConfirm').onclick=async()=>{
+  if(!currentTradeSession) return;
+  try{
+    const resp=await emitAsync('trade:confirm', {sessionId:currentTradeSession.sessionId});
+    if(resp.waiting){ $('reviewMine').insertAdjacentHTML('beforeend','<br><i style="color:#ffcf7a">Karşı taraf bekleniyor...</i>'); }
+  }catch(e){ alert(e.message); }
+};
+$('btnReviewCancel').onclick=async()=>{
+  if(!currentTradeSession) return;
+  try{ await emitAsync('trade:cancel', {sessionId:currentTradeSession.sessionId}); }catch(e){}
+  hide('tradeReviewModal'); currentTradeSession=null;
+};
+
+/* ---------- Admin paneli ---------- */
+function maybeShowAdminPanel(isAdmin){
+  if(!isAdmin) return;
+  if(document.getElementById('adminPanel')) return;
+  const panel=document.createElement('div');
+  panel.id='adminPanel';
+  panel.style.cssText='position:absolute;bottom:70px;right:8px;z-index:15;background:linear-gradient(180deg,#1c2144,#0a0e22);border:2px solid #ff5a5a;border-radius:10px;padding:8px;';
+  panel.innerHTML='<div style="font-size:11px;color:#ff8a8a;font-weight:bold;margin-bottom:4px">⚙️ ADMIN</div><button id="adminGems" class="fire" style="font-size:10px;padding:5px 8px">+5000 💎</button><button id="adminPack" class="secondary" style="font-size:10px;padding:5px 8px">+5 Seed Pack</button>';
+  document.getElementById('root').appendChild(panel);
+  document.getElementById('adminGems').onclick=async()=>{
+    const resp=await emitAsync('admin:setgems', {amount: gems+5000});
+    gems=resp.gems; $('gemCount').textContent=gems;
+  };
+  document.getElementById('adminPack').onclick=async()=>{
+    const resp=await emitAsync('admin:giveitem', {itemId:'seedpack', count:5});
+    inventory=resp.inventory; buildFullInv(); buildHotbarUI();
+  };
+}
+
+/* ---------- Torna Makinesi (Lathe) ---------- */
+const LATHE_RECIPES = [
+  {result:'item_buzzsaw', ingredients:['alloy_steel','ore_iron','ore_copper']},
+  {result:'item_gun', ingredients:['alloy_duralumin','alloy_steel']},
+  {result:'item_robot_armor', ingredients:['alloy_duralumin','alloy_steel','ore_gold']},
+  {result:'item_metal_glove', ingredients:['alloy_steel','alloy_alumbronze']},
+];
+function openLatheModal(){
+  show('latheModal'); renderLatheRecipes();
+}
+$('btnLatheClose').onclick=()=>hide('latheModal');
+function renderLatheRecipes(){
+  const box=$('latheRecipes'); box.innerHTML='';
+  LATHE_RECIPES.forEach(r=>{
+    const it=ITEMS[r.result];
+    const canMake = r.ingredients.every(id=>{ const row=inventory.find(i=>i.id===id); return row && row.count>=1; });
+    const card=document.createElement('div'); card.className='recipeCard'+(canMake?' canMake':'');
+    let html = `<b>${it.name}</b><div style="margin-top:4px">`;
+    r.ingredients.forEach(id=>{
+      const row=inventory.find(i=>i.id===id);
+      const have=row?row.count:0;
+      html += `<span class="recipeIngredient${have<1?' missing':''}">${ITEMS[id].name} (${have}/1)</span>`;
+    });
+    html += `</div>`;
+    card.innerHTML=html;
+    const btn=document.createElement('button'); btn.className=canMake?'fire':'secondary'; btn.textContent='Üret';
+    btn.style.marginTop='8px'; btn.disabled=!canMake;
+    btn.onclick=async()=>{
+      try{
+        const resp=await emitAsync('craft:combine', {itemIds:r.ingredients});
+        inventory=resp.inventory;
+        addChatMsg('world','Sistem', `⚙️ ${ITEMS[resp.result].name} üretildi!`);
+        playSfx('merge'); buildFullInv(); buildHotbarUI(); renderLatheRecipes();
+      }catch(e){ addChatMsg('world','Sistem', 'Üretim başarısız: '+e.message); playSfx('error'); }
+    };
+    card.appendChild(btn);
+    box.appendChild(card);
+  });
+}
+
+/* ---------- Player Shop ---------- */
+let currentShopId=null;
+async function openShopWindow(tx,ty){
+  const shopId=`shop_${tx}_${ty}`;
+  try{
+    const resp=await emitAsync('shop:open', {shopId});
+    currentShopId=shopId;
+    const isOwner = currentUser && resp.shop.ownerId!==undefined && resp.shop.ownerUsername===currentUser.username;
+    $('shopTitle').textContent = `🏪 ${resp.shop.ownerUsername} Dükkanı`;
+    $('shopSub').textContent = isOwner ? 'Bu senin dükkanın — ürün ekle veya stok yükle.' : 'Ürünleri incele ve satın al.';
+    $('shopManageBox').classList.toggle('hidden', !isOwner);
+    if(isOwner) populateShopAddItemSelect();
+    renderShopListings(resp.shop.listings, isOwner);
+    show('shopModal');
+  }catch(e){ addChatMsg('world','Sistem','Dükkan açılamadı: '+e.message); }
+}
+$('btnShopClose').onclick=()=>{ hide('shopModal'); currentShopId=null; };
+function populateShopAddItemSelect(){
+  const sel=$('shopAddItemSelect'); sel.innerHTML='';
+  inventory.filter(row=>{ const def=ITEMS[row.id]; return def && def.sellable!==false; }).forEach(row=>{
+    const opt=document.createElement('option'); opt.value=row.id; opt.textContent=`${ITEMS[row.id].name} (envanterde ${row.count})`;
+    sel.appendChild(opt);
+  });
+}
+function renderShopListings(listings, isOwner){
+  const box=$('shopListings'); box.innerHTML='';
+  if(!listings.length){ box.innerHTML='<div class="sub">Henüz ürün yok.</div>'; return; }
+  listings.forEach(l=>{
+    const def=ITEMS[l.itemId];
+    const row=document.createElement('div'); row.className='recipeCard';
+    row.innerHTML=`<b>${def.name}</b> — ${l.price} 💎 <span style="opacity:.7">(stok: ${l.stock})</span>`;
+    if(!isOwner){
+      const btn=document.createElement('button'); btn.className='fire'; btn.textContent='Satın Al'; btn.style.marginLeft='8px';
+      btn.disabled = l.stock<1 || gems<l.price;
+      btn.onclick=async()=>{
+        try{
+          const resp=await emitAsync('shop:buy', {shopId:currentShopId, itemId:l.itemId, count:1});
+          gems=resp.gems; inventory=resp.inventory; buildHotbarUI(); $('gemCount').textContent=gems;
+          playSfx('buy'); addChatMsg('world','Sistem', `${def.name} satın alındı!`);
+        }catch(e){ addChatMsg('world','Sistem','Satın alma başarısız: '+e.message); playSfx('error'); }
+      };
+      row.appendChild(btn);
+    }
+    box.appendChild(row);
+  });
+}
+$('btnShopAddListing').onclick=async()=>{
+  const itemId=$('shopAddItemSelect').value;
+  const price=parseInt($('shopAddPrice').value)||0;
+  const qty=Math.max(1, parseInt($('shopAddQty').value)||1);
+  if(!itemId) return;
+  try{
+    const resp=await emitAsync('shop:setListing', {shopId:currentShopId, itemId, price, addStock:qty});
+    inventory=inventory; // sunucu envanteri zaten düştü, tam senkron için full inv yeniden çekilebilir
+    renderShopListings(resp.listings, true);
+    populateShopAddItemSelect();
+    addChatMsg('world','Sistem','Dükkan güncellendi.');
+  }catch(e){ addChatMsg('world','Sistem','Güncellenemedi: '+e.message); }
+};
+
+function openLockModal(){
+  show('lockModal');
+  $('lockStatusText').textContent = worldData.locked ? `Kilitli — sahibi ${worldData.owner}` : "Kilitli değil — envanterinden bir World Lock'ü dünyaya yerleştirmen gerek.";
+  renderAccessList();
+}
+const ROLE_LABELS = { OWNER:'Sahip', CO_OWNER:'Co-Sahip', BUILDER:'İnşacı', VISITOR:'Ziyaretçi', BANNED:'Yasaklı' };
+function renderAccessList(){
+  const box=$('accessList'); box.innerHTML='';
+  const row=(n,isOwner,role)=>{
+    const d=document.createElement('div'); d.className='accessRow';
+    const roleLabel = isOwner ? ROLE_LABELS.OWNER : (ROLE_LABELS[role]||role);
+    d.innerHTML=`<span class="${isOwner?'ownerName':''}">${n} <span style="opacity:.65;font-size:10px">(${roleLabel})</span></span>`;
+    if(!isOwner){
+      const isMeOwner = currentUser && worldData.owner===currentUser.username;
+      if(isMeOwner){
+        const sel=document.createElement('select'); sel.style.fontSize='10px'; sel.style.marginRight='4px';
+        ['VISITOR','BUILDER','CO_OWNER','BANNED'].forEach(r=>{ const o=document.createElement('option'); o.value=r; o.textContent=ROLE_LABELS[r]; if(r===role) o.selected=true; sel.appendChild(o); });
+        sel.onchange=async()=>{ try{ await emitAsync('lock:addAccess',{username:n, role:sel.value}); }catch(e){ alert(e.message); } };
+        d.appendChild(sel);
+      }
+      const rm=document.createElement('button'); rm.textContent='Çıkar'; rm.style.fontSize='10px'; rm.style.padding='3px 6px';
+      rm.onclick=async()=>{ try{ await emitAsync('lock:removeAccess',{username:n}); }catch(e){ alert(e.message); } };
+      d.appendChild(rm);
+    }
+    box.appendChild(d);
+  };
+  row(worldData.owner,true);
+  (worldData.allow||[]).forEach(e=>{
+    const uname = typeof e==='string' ? e : e.username; // eski format güvenliği
+    const role = typeof e==='string' ? 'BUILDER' : e.role;
+    row(uname,false,role);
+  });
+}
+$('btnAccessAdd').onclick=async()=>{
+  const n=$('accessAdd').value.trim(); if(!n) return;
+  try{ await emitAsync('lock:addAccess',{username:n, role:'BUILDER'}); $('accessAdd').value=''; }
+  catch(e){ alert(e.message); }
+};
+
+$('btnCloseStore').onclick=()=>{ hide('storeModal'); };
+$('btnShopQuick').onclick=()=>openStore();
+let storeTab='all';
+function openStore(){
+  show('storeModal'); $('storeGems').textContent=gems;
+  renderStoreCards();
+}
+function renderStoreCards(){
+  const list=$('storeList'); list.innerHTML='';
+  const items = STORE_ITEMS.filter(si=> storeTab==='all' || si.cat===storeTab);
+  items.forEach(si=>{
+    const it=ITEMS[si.id];
+    const card=document.createElement('div'); card.className='storeCard';
+    const iconWrap=document.createElement('div'); iconWrap.style.cssText='width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,.07);margin-bottom:2px;';
+    const c=document.createElement('canvas'); c.width=32; c.height=32; c.style.cssText='image-rendering:pixelated;'; drawTexToCanvas(si.id,c);
+    iconWrap.appendChild(c); card.appendChild(iconWrap);
+    const name=document.createElement('div'); name.style.cssText='font-size:10px;font-weight:bold;line-height:1.3;color:#ffe680;'; name.textContent=si.label||it.name; card.appendChild(name);
+    if(it.desc){ const desc=document.createElement('div'); desc.style.cssText='font-size:9px;opacity:.65;line-height:1.3;'; desc.textContent=it.desc.slice(0,55)+(it.desc.length>55?'…':''); card.appendChild(desc); }
+    const price=document.createElement('div'); price.className='price'; price.textContent=si.price+' 💎'; card.appendChild(price);
+    if(si.qty && si.qty>1){ const qt=document.createElement('div'); qt.style.cssText='font-size:9px;opacity:.65;'; qt.textContent='Adet: '+si.qty; card.appendChild(qt); }
+    const buy=document.createElement('button'); buy.className='fire'; buy.textContent='Satın Al'; buy.disabled = gems < si.price;
+    buy.onclick=async()=>{
+      try{
+        const resp=await emitAsync('store:buy',{itemId:si.id});
+        gems=resp.gems; inventory=resp.inventory;
+        $('storeGems').textContent=gems; $('gemCount').textContent=gems;
+        buy.disabled = gems < si.price;
+        buildHotbarUI(); buildFullInv(); addChatMsg('world','Sistem', `${it.name} satın alındı! 💎 Kalan: ${gems}`); playSfx('pickup');
+      }catch(e){ alert(e.message); }
+    };
+    card.appendChild(buy);
+    list.appendChild(card);
+  });
+  if(items.length===0){ list.innerHTML='<div style="opacity:.6;font-size:12px;padding:20px;text-align:center;grid-column:span 3">Bu kategoride ürün bulunamadı.</div>'; }
+}
+document.querySelectorAll('#storeTabs div').forEach(tabEl=>{
+  tabEl.onclick=()=>{
+    document.querySelectorAll('#storeTabs div').forEach(t=>t.classList.remove('active'));
+    tabEl.classList.add('active'); storeTab=tabEl.dataset.st; renderStoreCards();
+  };
+});
+
+/* ---------- Chat (yukarıdan aşağı açılır/kapanır) ---------- */
+let chatTab='world', chatOpen=false;
+$('btnChatToggle').onclick=()=>{ chatOpen=!chatOpen; $('chatWrap').classList.toggle('open',chatOpen); if(chatOpen) $('chatInput').focus(); };
+$('chatClose').onclick=()=>{ chatOpen=false; $('chatWrap').classList.remove('open'); };
+document.querySelectorAll('#chatTabs div').forEach(d=>{
+  d.onclick=()=>{ document.querySelectorAll('#chatTabs div').forEach(x=>x.classList.remove('active')); d.classList.add('active'); chatTab=d.dataset.c; renderChat(); };
+});
+let chatMessages={world:[],global:[]};
+function addChatMsg(channel,who,text){ chatMessages[channel].push({who,text}); if(chatMessages[channel].length>60) chatMessages[channel].shift(); renderChat(); }
+function renderChat(){
+  const log=$('chatLog'); log.innerHTML='';
+  (chatMessages[chatTab]||[]).forEach(m=>{ const d=document.createElement('div'); d.innerHTML=`<b>${m.who}:</b> ${m.text}`; log.appendChild(d); });
+  log.scrollTop=log.scrollHeight;
+}
+$('chatInput').addEventListener('keydown',e=>{
+  e.stopPropagation();
+  if(e.key==='Enter'){
+    let v=$('chatInput').value.trim().slice(0,140);
+    if(v && socket && socket.connected){
+      socket.emit('chat:send', {channel:chatTab, text:v});
+    }
+    $('chatInput').value='';
+  }
+  if(e.key==='Escape'){ chatOpen=false; $('chatWrap').classList.remove('open'); $('chatInput').blur(); }
+});
+// oyun içindeyken Enter'a basınca chat direkt açılıp odaklansın
+window.addEventListener('keydown', e=>{
+  if(e.code==='Enter' && gameRunning && document.activeElement!==$('chatInput') && document.activeElement!==$('accessAdd')){
+    chatOpen=true; $('chatWrap').classList.add('open'); $('chatInput').focus();
+  }
+});
+function handleIncomingChat(m){
+  addChatMsg(m.channel, m.who, m.text);
+  if(m.channel==='world'){
+    if(currentUser && m.who===currentUser.username) showSpeechBubble(m.text);
+    else{
+      const rp=Object.values(remotePlayers).find(r=>r.username===m.who);
+      if(rp) showRemoteBubble(rp, m.text);
+    }
+  }
+}
+let bubbleText=null, bubbleTimer=0;
+function showSpeechBubble(text){
+  if(bubbleText){ world.removeChild(bubbleText); bubbleText=null; }
+  const t=new PIXI.Text(text.length>40? text.slice(0,40)+'…':text, {fontFamily:'Trebuchet MS', fontSize:12, fill:0x1a1a1a, wordWrap:true, wordWrapWidth:180, align:'center'});
+  const pad=8;
+  const bg=new PIXI.Graphics();
+  bg.beginFill(0xffffff,0.95); bg.lineStyle(2,0x1a1a1a,0.8);
+  bg.drawRoundedRect(0,0,t.width+pad*2,t.height+pad*2,8);
+  bg.moveTo(t.width/2+pad-6,t.height+pad*2); bg.lineTo(t.width/2+pad,t.height+pad*2+8); bg.lineTo(t.width/2+pad+6,t.height+pad*2);
+  bg.endFill();
+  const cont=new PIXI.Container(); cont.addChild(bg); t.x=pad; t.y=pad; cont.addChild(t);
+  cont.pivot.set(cont.width/2, cont.height+10); cont.zIndex=60;
+  world.addChild(cont);
+  bubbleText=cont; bubbleTimer=4;
+}
+function showRemoteBubble(rp, text){
+  if(rp.bubble){ world.removeChild(rp.bubble); rp.bubble=null; }
+  const t=new PIXI.Text(text.length>40? text.slice(0,40)+'…':text, {fontFamily:'Trebuchet MS', fontSize:12, fill:0x1a1a1a, wordWrap:true, wordWrapWidth:180, align:'center'});
+  const pad=8;
+  const bg=new PIXI.Graphics();
+  bg.beginFill(0xffffff,0.95); bg.lineStyle(2,0x1a1a1a,0.8);
+  bg.drawRoundedRect(0,0,t.width+pad*2,t.height+pad*2,8);
+  bg.moveTo(t.width/2+pad-6,t.height+pad*2); bg.lineTo(t.width/2+pad,t.height+pad*2+8); bg.lineTo(t.width/2+pad+6,t.height+pad*2);
+  bg.endFill();
+  const cont=new PIXI.Container(); cont.addChild(bg); t.x=pad; t.y=pad; cont.addChild(t);
+  cont.pivot.set(cont.width/2, cont.height+10); cont.zIndex=60;
+  world.addChild(cont);
+  rp.bubble=cont; rp.bubbleTimer=4;
+}
+
+/* ---------- Envanter UI ---------- */
+let wrenchMode=false;
+function buildHotbarUI(){
+  const bar=$('invBar'); bar.innerHTML='';
+  hotbar.forEach((id,idx)=>{
+    const slot=document.createElement('div'); slot.className='slot'+(idx===selectedHotbar?' selected':'')+(idx===0&&wrenchMode?' worn':'');
+    if(id){
+      const showId = (idx===0 && wrenchMode) ? 'wrench' : id;
+      const c=document.createElement('canvas'); c.width=32;c.height=32; drawTexToCanvas(showId,c); slot.appendChild(c);
+      const inv=inventory.find(i=>i.id===id);
+      if(inv && ITEMS[id].type!=='wings' && ITEMS[id].type!=='tool'){ const q=document.createElement('div'); q.className='qty'; q.textContent=inv.count; slot.appendChild(q); }
+    }
+    slot.onclick=()=>{ selectedHotbar=idx; buildHotbarUI(); };
+    if(idx===0){
+      slot.title='Çift tıkla: Yumruk / Wrench değiştir';
+      slot.ondblclick=()=>{ wrenchMode=!wrenchMode; buildHotbarUI(); addChatMsg('world','Sistem', wrenchMode?'🔧 Wrench elinde. World Lock veya oyunculara tıklayabilirsin.':'👊 Yumruk elinde.'); playSfx('equip'); };
+    }
+    bar.appendChild(slot);
+  });
+}
+function drawTexToCanvas(id,canvasEl){
+  const t=tex(id); const rt=app.renderer.extract.canvas(new PIXI.Sprite(t));
+  const ctx=canvasEl.getContext('2d'); ctx.imageSmoothingEnabled=false; ctx.drawImage(rt,0,0,32,32);
+}
+let invOpen=false, invTab='all', selectedInvItem=null;
+function toggleInv(){ invOpen=!invOpen; $('fullInv').classList.toggle('hidden',!invOpen); if(invOpen) buildFullInv(); }
+$('btnCloseInv').onclick=()=>toggleInv();
+document.querySelectorAll('#invTabs div').forEach(d=>{
+  d.onclick=()=>{ document.querySelectorAll('#invTabs div').forEach(x=>x.classList.remove('active')); d.classList.add('active'); invTab=d.dataset.t; buildFullInv(); };
+});
+
+/* ---------- Birleştirme (Craft) ---------- */
+let craftSelection=[];
+$('btnCraft').onclick=()=>{
+  if(selectedInvItem==='seedpack'){
+    emitAsync('item:openpack', {itemId:'seedpack'}).then(resp=>{
+      inventory=resp.inventory; clearHotbarIfDepleted('seedpack'); buildFullInv(); buildHotbarUI();
+      addChatMsg('world','Sistem', `Seed Pack açıldı! 100 tohum envanterine eklendi.`); playSfx('pickup');
+    }).catch(e=> alert(e.message));
+    return;
+  }
+  craftSelection = selectedInvItem ? [selectedInvItem] : [];
+  openCraftModal();
+};
+function openCraftModal(){
+  show('craftModal'); renderCraftGrid();
+}
+function renderCraftGrid(){
+  const grid=$('craftGrid'); grid.innerHTML='';
+  inventory.filter(i=>i.id!=='seedpack').forEach(inv=>{
+    const it=ITEMS[inv.id];
+    const cell=document.createElement('div'); cell.className='slot';
+    if(craftSelection.includes(inv.id)) cell.classList.add('selected');
+    const c=document.createElement('canvas'); c.width=32; c.height=32; drawTexToCanvas(inv.id,c); cell.appendChild(c);
+    const qty=document.createElement('div'); qty.className='qty'; qty.textContent=inv.count; cell.appendChild(qty);
+    cell.title=it.name;
+    cell.onclick=()=>{
+      const idx=craftSelection.indexOf(inv.id);
+      if(idx>=0) craftSelection.splice(idx,1);
+      else { if(craftSelection.length>=3){ addChatMsg('world','Sistem','En fazla 3 eşya seçebilirsin.'); return; } craftSelection.push(inv.id); }
+      renderCraftGrid();
+    };
+    grid.appendChild(cell);
+  });
+  $('craftSelected').textContent = craftSelection.length
+    ? 'Seçilen: ' + craftSelection.map(id=>ITEMS[id].name).join(' + ')
+    : 'Henüz eşya seçmedin (2 veya 3 seç).';
+}
+$('btnCraftClose').onclick=()=>{ hide('craftModal'); craftSelection=[]; };
+$('btnCraftConfirm').onclick=async()=>{
+  if(craftSelection.length<2){ alert('En az 2 eşya seçmelisin.'); return; }
+  try{
+    const resp = await emitAsync('craft:combine', {itemIds:craftSelection});
+    inventory = resp.inventory;
+    addChatMsg('world','Sistem', `🔀 Birleşti! ${ITEMS[resp.result].name} elde ettin.`);
+    playSfx('merge');
+    craftSelection=[]; hide('craftModal'); buildFullInv(); buildHotbarUI();
+  }catch(e){ addChatMsg('world','Sistem', 'Birleştirme başarısız: '+e.message); playSfx('error'); }
+};
+function buildFullInv(){
+  const grid=$('invGrid'); grid.innerHTML='';
+  let items = invTab==='worn' ? (worn.wings?[{id:worn.wings,count:1,isWorn:true}]:[]) : inventory.filter(i=>i.count>0);
+  if(items.length===0){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;opacity:.6;font-size:11px;padding:10px">Boş</div>'; }
+  items.forEach(inv=>{
+    const it=ITEMS[inv.id];
+    const cell=document.createElement('div'); cell.className='slot'+(selectedInvItem===inv.id?' selected':'')+(inv.isWorn?' worn':'');
+    const c=document.createElement('canvas'); c.width=32;c.height=32; drawTexToCanvas(inv.id,c); cell.appendChild(c);
+    if(!inv.isWorn){ const q=document.createElement('div'); q.className='qty'; q.textContent=inv.count; cell.appendChild(q); }
+    cell.title=it.name;
+    cell.onclick=()=>{
+      selectedInvItem=inv.id; buildFullInv(); showItemDesc(inv.id);
+    };
+    cell.ondblclick=()=>{
+      if(!inv.isWorn && it.type!=='wings'){ assignToHotbar(inv.id); buildHotbarUI(); }
+    };
+    grid.appendChild(cell);
+  });
+  if(selectedInvItem) showItemDesc(selectedInvItem);
+}
+function clearHotbarIfDepleted(id){
+  if(!inventory.find(i=>i.id===id && i.count>0)){
+    hotbar = hotbar.map(h=> h===id? null : h);
+  }
+}
+function assignToHotbar(id){
+  // zaten hotbar'da varsa sadece onu seç, üstüne yazma
+  const existingIdx = hotbar.indexOf(id);
+  if(existingIdx>=0){ selectedHotbar=existingIdx; return; }
+  // boş bir slot bul, yoksa şu an seçili slotun üstüne yaz
+  const emptyIdx = hotbar.indexOf(null);
+  if(emptyIdx>=0){ hotbar[emptyIdx]=id; selectedHotbar=emptyIdx; }
+  else { hotbar[selectedHotbar]=id; }
+}
+function showItemDesc(id){ const it=ITEMS[id]; $('itemDesc').innerHTML=`<b>${it.name}</b><br>${it.desc||''}<br><span style="opacity:.6;font-size:10px">Çift tıkla: hotbar'a ekle</span>`; }
+$('btnEquip').onclick=async()=>{
+  if(!selectedInvItem){ alert('Önce bir eşya seç.'); return; }
+  const it=ITEMS[selectedInvItem];
+  if(it.type!=='wings'){ alert('Bu eşya giyilemez.'); return; }
+  try{
+    const equipping = worn.wings!==selectedInvItem;
+    const resp = await emitAsync('inventory:equip', {itemId:selectedInvItem, equip:equipping});
+    worn=resp.worn; inventory=resp.inventory; wingsEquipped=!!worn.wings; setCharWing(charSprite, worn.wings);
+    playSfx('equip');
+  }catch(e){ alert(e.message); }
+  buildFullInv(); buildHotbarUI();
+};
+function askDropQuantity(max, title, confirmLabel){
+  return new Promise(resolve=>{
+    $('dropQtyTitle').textContent = title || 'Kaç tane bırakmak istiyorsun?';
+    $('dropQtyConfirm').textContent = confirmLabel || 'Bırak';
+    const input=$('dropQtyInput'), slider=$('dropQtySlider');
+    input.min=1; input.max=max; input.value=1;
+    slider.min=1; slider.max=max; slider.value=1;
+    input.oninput=()=>{ let v=Math.max(1,Math.min(max,parseInt(input.value)||1)); slider.value=v; };
+    slider.oninput=()=>{ input.value=slider.value; };
+    $('dropQtyMin').onclick=()=>{ input.value=1; slider.value=1; };
+    $('dropQtyMax').onclick=()=>{ input.value=max; slider.value=max; };
+    show('dropQtyModal');
+    $('dropQtyConfirm').onclick=()=>{ hide('dropQtyModal'); resolve(Math.max(1,Math.min(max,parseInt(input.value)||1))); };
+    $('dropQtyCancel').onclick=()=>{ hide('dropQtyModal'); resolve(null); };
+  });
+}
+$('btnDrop').onclick=async()=>{
+  if(!selectedInvItem){ alert('Önce bir eşya seç.'); return; }
+  if(worn.wings===selectedInvItem){ alert('Giyili eşyayı bırakamazsın! Önce çıkar.'); return; }
+  const inv=inventory.find(i=>i.id===selectedInvItem); if(!inv) return;
+  const amt = await askDropQuantity(inv.count, `${ITEMS[selectedInvItem].name} — kaç tane bırakmak istiyorsun?`);
+  if(!amt) return;
+  try{
+    const resp = await emitAsync('inventory:drop', {itemId:selectedInvItem, count:amt});
+    inventory = resp.inventory; clearHotbarIfDepleted(selectedInvItem); playSfx('button');
+    addChatMsg('world','Sistem', `${ITEMS[selectedInvItem].name} x${amt} önüne bırakıldı.`);
+  }catch(e){ alert(e.message); }
+  buildFullInv(); buildHotbarUI();
+};
+$('btnTrash').onclick=async()=>{
+  if(!selectedInvItem){ alert('Önce bir eşya seç.'); return; }
+  if(worn.wings===selectedInvItem){ alert('Giyili eşyayı yok edemezsin! Önce çıkar.'); return; }
+  const inv=inventory.find(i=>i.id===selectedInvItem); if(!inv) return;
+  const amt = await askDropQuantity(inv.count, `${ITEMS[selectedInvItem].name} — kaç tane yok etmek istiyorsun?`, '🗑️ Yok Et');
+  if(!amt) return;
+  try{
+    const resp = await emitAsync('inventory:trash', {itemId:selectedInvItem, count:amt});
+    inventory = resp.inventory;
+    clearHotbarIfDepleted(selectedInvItem);
+  }catch(e){ alert(e.message); }
+  selectedInvItem=null;
+  buildFullInv(); buildHotbarUI();
+};
+
+/* ---------- Input (WASD) ---------- */
+const keys={};
+window.addEventListener('keydown',e=>{
+  if(document.activeElement===$('chatInput') || document.activeElement===$('accessAdd')) return;
+  keys[e.code]=true;
+  if(!gameRunning) return;
+  if(e.code==='KeyE'){ toggleInv(); }
+  if(e.code>='Digit1' && e.code<='Digit8'){ selectedHotbar=parseInt(e.code.slice(-1))-1; buildHotbarUI(); }
+});
+window.addEventListener('keyup',e=>{ keys[e.code]=false; });
+
+/* ---------- Fare: SOL basılı tutarak kırma / SAĞ tık yerleştirme-ekme, hasat sol tık ---------- */
+let mouseDown=false, mouseIsRight=false, mouseTx=-1, mouseTy=-1, punchTimer=0;
+app.view.addEventListener('contextmenu', e=>e.preventDefault());
+app.view.addEventListener('mousedown',e=>{
+  if(!gameRunning || invOpen) return;
+  const rect=app.view.getBoundingClientRect();
+  const px=e.clientX-rect.left, py=e.clientY-rect.top;
+  if(e.button===2){
+    const wx=(px+camX)/zoom, wy=(py+camY)/zoom;
+    if(Math.abs(wx-player.x)<18 && Math.abs(wy-player.y)<28){
+      const pack=inventory.find(i=>i.id==='seedpack');
+      if(pack){
+        emitAsync('item:openpack', {itemId:'seedpack'}).then(resp=>{
+          inventory=resp.inventory; buildFullInv(); buildHotbarUI();
+          addChatMsg('world','Sistem', `Seed Pack açıldı! 100 tohum envanterine eklendi.`); playSfx('pickup');
+        }).catch(err=> addChatMsg('world','Sistem', err.message));
+      } else {
+        addChatMsg('world','Sistem', 'Envanterinde açılacak bir Seed Pack yok.');
+      }
+      return;
+    }
+  }
+  const t=screenToTile(px,py); mouseTx=t.tx; mouseTy=t.ty; mouseDown=true; mouseIsRight=(e.button===2); punchTimer=0;
+
+  if(wrenchMode && selectedHotbar===0 && !mouseIsRight){
+    const wx=(px+camX)/zoom, wy=(py+camY)/zoom;
+    // önce başka oyunculara tıklandı mı diye bak
+    for(const rp of Object.values(remotePlayers)){
+      if(Math.abs(wx-rp.x)<16 && Math.abs(wy-rp.y)<28){ openPlayerCard(rp); mouseDown=false; return; }
+    }
+    // sonra bir World Lock'a tıklandı mı diye bak
+    if(worldData.tiles[t.ty] && worldData.tiles[t.ty][t.tx]==='worldlock'){
+      openLockModal(); mouseDown=false; return;
+    }
+    addChatMsg('world','Sistem','Wrench ile bir World Lock\'a veya başka bir oyuncuya tıkla.');
+    mouseDown=false; return;
+  }
+  handleInteract(t.tx,t.ty,px,py, true, mouseIsRight);
+});
+window.addEventListener('mouseup',()=>{ mouseDown=false; });
+app.view.addEventListener('mousemove',e=>{
+  if(!mouseDown) return;
+  const rect=app.view.getBoundingClientRect();
+  const t=screenToTile(e.clientX-rect.left,e.clientY-rect.top);
+  if(t.tx!==mouseTx || t.ty!==mouseTy){ mouseTx=t.tx; mouseTy=t.ty; punchTimer=0; }
+});
+let lastMouseScreen={x:-999,y:-999};
+app.view.addEventListener('mousemove', e=>{
+  const rect=app.view.getBoundingClientRect();
+  lastMouseScreen.x=e.clientX-rect.left; lastMouseScreen.y=e.clientY-rect.top;
+});
+function updateGrowTooltip(){
+  if(!gameRunning || invOpen){ $('growTooltip').classList.add('hidden'); return; }
+  const t=screenToTile(lastMouseScreen.x,lastMouseScreen.y);
+  const tip=$('growTooltip');
+  if(worldData && worldData.tiles[t.ty] && worldData.tiles[t.ty][t.tx] === 'shop_stand'){
+    tip.textContent='🏪 Dükkan (İncelemek için Wrench / Sağ Tıkla)';
+    tip.style.left=lastMouseScreen.x+'px'; tip.style.top=lastMouseScreen.y+'px';
+    tip.classList.remove('hidden');
+    return;
+  }
+  const p=plants.find(pl=>pl.x===t.tx&&pl.y===t.ty);
+  if(!p){ tip.classList.add('hidden'); return; }
+  const stage=plantStage(p);
+  if(stage==='ready'){
+    tip.textContent='✅ Hasat için hazır! (tıkla)';
+  } else {
+    const total=ITEMS[p.itemId].growSeconds;
+    const remain=Math.max(0, total-(Date.now()-p.plantedAt)/1000);
+    const m=Math.floor(remain/60), s=Math.floor(remain%60);
+    tip.textContent=`🌱 ${ITEMS[p.itemId].name} — büyümesine ${m>0?m+'dk ':''}${s}sn kaldı`;
+  }
+  tip.style.left=lastMouseScreen.x+'px'; tip.style.top=lastMouseScreen.y+'px';
+  tip.classList.remove('hidden');
+}
+function screenToTile(px,py){ const wx=(px+camX)/zoom, wy=(py+camY)/zoom; return {tx:Math.floor(wx/TILE), ty:Math.floor(wy/TILE)}; }
+
+const REACH=2; // Growtopia: duran karo + 2 blok öteye kadar (sunucu ayrıca kendi REACH_TILES=3 ile doğrular)
+function inReach(tx,ty){
+  const ptx=Math.floor(player.x/TILE), pty=Math.floor(player.y/TILE);
+  return Math.abs(tx-ptx)<=REACH && Math.abs(ty-pty)<=REACH;
+}
+let breakInFlight=false, placeInFlight=false;
+function handleInteract(tx,ty,px,py, isClickStart, isRightClick){
+  if(tx<0||ty<0||tx>=WORLD_W||ty>=WORLD_H) return;
+  if(!inReach(tx,ty)){ if(isClickStart) addChatMsg('world','Sistem','Çok uzak! Karakterinin etrafındaki bloklara ulaşabilirsin.'); return; }
+  const myAccessEntry = (worldData.allow||[]).find(e=> (typeof e==='string'?e:e.username)===currentUser.username);
+  const myRole = myAccessEntry ? (typeof myAccessEntry==='string'?'BUILDER':myAccessEntry.role) : null;
+  const canBuild = !worldData.locked || worldData.owner===currentUser.username || myRole==='BUILDER' || myRole==='CO_OWNER';
+  const itemId=hotbar[selectedHotbar];
+  const existing=worldData.tiles[ty][tx];
+
+  if(isRightClick && existing==='lathe'){
+    if(isClickStart) openLatheModal();
+    return;
+  }
+  if(isRightClick && existing==='shop_stand'){
+    if(isClickStart) openShopWindow(tx,ty);
+    return;
+  }
+  if(isRightClick && existing==='matrix_chair'){
+    if(isClickStart) {
+      emitAsync('chair:sit').then(res=>{
+        if(res.targetWorld) {
+          // matrix_chair server emit matrix:enter anyway but fallback to trigger it if needed
+        }
+      }).catch(e=>addChatMsg('world','Sistem',e.message));
+    }
+    return;
+  }
+  // Kapılardan geçiş (isPassable + isDoor)
+  if(isRightClick && existing && ITEMS[existing].isDoor){
+    // Kapıdan geçme mantığı - şimdilik sadece animasyon
+    if(isClickStart) { playSfx('button'); addChatMsg('world','Sistem', 'Kapı açıldı.'); }
+    return;
+  }
+
+  // bitkiye vurma (sol tık, her aşamada mümkün — olgunlaşmamışsa daha az şans/ödülle)
+  const pIdx=plants.findIndex(p=>p.x===tx&&p.y===ty);
+  if(!isRightClick && pIdx>=0){
+    if(!ITEMS[itemId] || ITEMS[itemId].type!=='tool'){ if(isClickStart) addChatMsg('world','Sistem',"Kırmak için envanterden Yumruk'u seç!"); return; }
+    if(breakInFlight) return;
+    breakInFlight=true;
+    const wasReady = plantStage(plants[pIdx])==='ready';
+    triggerPunch(tx,ty);
+    emitAsync('plant:break', {tx,ty}).then(resp=>{
+      if(resp.broken) playSfx(wasReady?'harvest':'break');
+    }).catch(e=> addChatMsg('world','Sistem', e.message))
+      .finally(()=> breakInFlight=false);
+    return;
+  }
+  // ekme (sağ tık): tıklanan kare BOŞ olmalı ve altındaki blok toprak/çimen olmalı
+  const belowId = ty+1<WORLD_H ? worldData.tiles[ty+1][tx] : null;
+  if(isRightClick && itemId && ITEMS[itemId].type==='seed' && !existing && (belowId==='grassdirt'||belowId==='dirt') && pIdx<0){
+    if(!isClickStart) return;
+    if(!canBuild){ addChatMsg('world','Sistem','Bu dünya kilitli, erişimin yok!'); return; }
+    emitAsync('plant:seed', {tx,ty,itemId}).then(resp=>{
+      inventory=resp.inventory; clearHotbarIfDepleted(itemId); buildHotbarUI(); playSfx('plant');
+    }).catch(e=> addChatMsg('world','Sistem', e.message));
+    return;
+  }
+  if(!isRightClick && !existing && itemId && ITEMS[itemId].type==='tool'){
+    triggerPunch(tx,ty); // boşluğa yumruk sallama (etkisi yok, sadece animasyon)
+    if(itemId === 'weapon_lightning' && isClickStart) {
+      spawnLightningEffect(player.x, player.y, tx*TILE+16, ty*TILE+16);
+    } else if(itemId === 'weapon_trident' && isClickStart) {
+      spawnTridentProjectile(player.x, player.y, tx*TILE+16, ty*TILE+16);
+    }
+    return;
+  }
+  if(!isRightClick && existing){
+    if(ITEMS[existing].unbreak) return;
+    if(!ITEMS[itemId] || ITEMS[itemId].type!=='tool'){ if(isClickStart) addChatMsg('world','Sistem',"Kırmak için envanterden Yumruk'u seç!"); return; }
+    if(!canBuild){ if(isClickStart) addChatMsg('world','Sistem','Bu dünya kilitli, erişimin yok!'); return; }
+    if(existing==='worldlock' && worldData.owner!==currentUser.username){ if(isClickStart) addChatMsg('world','Sistem',"World Lock'u sadece sahibi kırabilir."); return; }
+    if(breakInFlight) return;
+    breakInFlight=true;
+    triggerPunch(tx,ty);
+    if(itemId === 'weapon_lightning' && isClickStart) spawnLightningEffect(player.x, player.y, tx*TILE+16, ty*TILE+16);
+    else if(itemId === 'weapon_trident' && isClickStart) spawnTridentProjectile(player.x, player.y, tx*TILE+16, ty*TILE+16);
+    
+    // görsel geri bildirim (sarsıntı/parçacık) sunucudan gelen block:hit / block:broken broadcast'lerinde otomatik tetiklenir
+    emitAsync('block:break', {tx,ty}).then(resp=>{
+      if(resp.broken && existing==='worldlock') addChatMsg('world','Sistem','World Lock kırıldı, dünya artık açık.');
+    }).catch(e=> addChatMsg('world','Sistem', e.message))
+      .finally(()=> breakInFlight=false);
+    return;
+  }
+  // yerleştirme (SAĞ tık, blok veya world lock, envanterden)
+  if(isRightClick && itemId && (ITEMS[itemId].type==='block'||ITEMS[itemId].type==='lock') && !existing){
+    if(!isClickStart || placeInFlight) return;
+    if(!canBuild){ addChatMsg('world','Sistem','Bu dünya kilitli, erişimin yok!'); return; }
+    placeInFlight=true;
+    emitAsync('block:place', {tx,ty,itemId}).then(resp=>{
+      inventory=resp.inventory; clearHotbarIfDepleted(itemId); buildHotbarUI();
+      if(itemId==='worldlock'){ addChatMsg('world','Sistem','World Lock yerleştirildi! Dünya artık korunuyor.'); playSfx('lock'); }
+      else playSfx('place');
+    }).catch(e=> addChatMsg('world','Sistem', e.message))
+      .finally(()=> placeInFlight=false);
+  }
+}
+function spawnLightningEffect(startX, startY, targetX, targetY) {
+  const g = new PIXI.Graphics();
+  g.lineStyle(3, 0x88ffff, 0.8);
+  g.moveTo(startX, Math.max(0, startY - 200));
+  g.lineTo(targetX, targetY);
+  g.lineStyle(0);
+  g.beginFill(0xffff00);
+  g.drawCircle(targetX, targetY, 15);
+  g.endFill();
+  world.addChild(g);
+  playSfx('break'); // placeholder sfx for thunder
+  let life = 1;
+  const t = setInterval(()=>{
+    life -= 0.1;
+    g.alpha = life;
+    if(life <= 0) { clearInterval(t); world.removeChild(g); }
+  }, 30);
+}
+function spawnTridentProjectile(startX, startY, targetX, targetY) {
+  const g = new PIXI.Graphics();
+  g.beginFill(0xffd700);
+  g.drawPolygon([0,-2, 16,-2, 20,0, 16,2, 0,2]);
+  g.endFill();
+  g.x = startX; g.y = startY;
+  const dx = targetX - startX, dy = targetY - startY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  g.rotation = Math.atan2(dy, dx);
+  world.addChild(g);
+  playSfx('jump'); // placeholder sfx for throw
+  
+  let progress = 0;
+  const speed = 16;
+  const t = setInterval(()=>{
+    progress += speed;
+    if(progress >= dist) {
+      clearInterval(t);
+      world.removeChild(g);
+      spawnParticles(Math.floor(targetX/TILE), Math.floor(targetY/TILE), [0x44aaff, 0x88ccff]);
+    } else {
+      g.x = startX + (dx/dist)*progress;
+      g.y = startY + (dy/dist)*progress;
+    }
+  }, 16);
+}
+
+function shakeTile(tx,ty){
+  const s=tileSprites[tx+'_'+ty]; if(!s) return;
+  const ox=s.x; s.x=ox+ (Math.random()*4-2);
+  setTimeout(()=>{ if(tileSprites[tx+'_'+ty]===s) s.x=ox; },80);
+}
+let punchT=0, punchTarget=null;
+function triggerPunch(tx,ty){ punchT=1; punchTarget={x:tx*TILE+16,y:ty*TILE+16}; }
+
+/* ---------- Fizik & döngü ---------- */
+let gameRunning=false;
+function solidAt(tx,ty){ if(ty<0||ty>=WORLD_H||tx<0||tx>=WORLD_W) return true; const id=worldData.tiles[ty][tx]; if(!id||!ITEMS[id]) return false; if(ITEMS[id].isPassable) return false; return ITEMS[id].type!=='currency' && (ITEMS[id].type==='block'||ITEMS[id].type==='lock'); }
+function update(delta){
+  if(!worldData) return;
+  const speed=3.2;
+  if(gameRunning){
+    if(keys['KeyA']){ player.vx=-speed; player.facing=-1; }
+    else if(keys['KeyD']){ player.vx=speed; player.facing=1; }
+    else player.vx*=0.7;
+
+    const jumpKeyHeld = keys['Space']||keys['KeyW'];
+    const jumpPressedEdge = jumpKeyHeld && !prevJumpKeyHeld;
+    if(jumpPressedEdge){
+      if(player.onGround){ player.vy=-11; player.onGround=false; jumpHoldTime=0; doubleJumped=false; jumpStage=1; playSfx('jump'); }
+      else if(wingsEquipped && !doubleJumped){ player.vy=-9; jumpHoldTime=0; doubleJumped=true; jumpStage=2; playSfx('jump'); }
+    }
+    if(jumpKeyHeld && player.vy<0){
+      if(jumpStage===1 && jumpHoldTime<14){ player.vy-=0.4; jumpHoldTime++; }
+      else if(jumpStage===2 && jumpHoldTime<10){ player.vy-=0.35; jumpHoldTime++; }
+    }
+    prevJumpKeyHeld = jumpKeyHeld;
+  } else {
+    player.vx*=0.7; // menü açıkken de sürtünme uygulanır ama yeni tuş girdisi alınmaz
+  }
+
+  // fizik (yerçekimi, çarpışma) HER ZAMAN çalışır — menü açık olsa bile dünya donmasın,
+  // düşme devam etsin, diğer oyunculara pozisyonun akıcı görünsün
+  player.vy+=GRAVITY*delta; if(player.vy>14) player.vy=14;
+
+  let nx=player.x+player.vx*delta, ny=player.y+player.vy*delta;
+  const halfW=10, halfH=16;
+  const txL=Math.floor((nx-halfW)/TILE), txR=Math.floor((nx+halfW)/TILE);
+  const tyT=Math.floor((player.y-halfH)/TILE), tyB=Math.floor((player.y+halfH-1)/TILE);
+  if(solidAt(txL,tyT)||solidAt(txL,tyB)||solidAt(txR,tyT)||solidAt(txR,tyB)){ nx=player.x; player.vx=0; }
+  player.x=Math.max(halfW, Math.min(WORLD_W*TILE-halfW, nx));
+
+  const tyT2=Math.floor((ny-halfH)/TILE), tyB2=Math.floor((ny+halfH)/TILE);
+  const txL2=Math.floor((player.x-halfW)/TILE), txR2=Math.floor((player.x+halfW)/TILE);
+  let landed=false;
+  if(player.vy>0 && (solidAt(txL2,tyB2)||solidAt(txR2,tyB2))){ ny=tyB2*TILE-halfH; player.vy=0; landed=true; }
+  else if(player.vy<0 && (solidAt(txL2,tyT2)||solidAt(txR2,tyT2))){ ny=(tyT2+1)*TILE+halfH; player.vy=0; }
+  player.y=ny; player.onGround=landed;
+
+  // Lav hasarı: oyuncu lava bloğuna temas edince yukarı fırlar + kırmızı flaş
+  if(worldData){
+    const ptxC=Math.floor(player.x/TILE), ptyC=Math.floor(player.y/TILE);
+    const ptxB=Math.floor(player.x/TILE), ptyB=Math.floor((player.y+14)/TILE);
+    const checkLava=(tx,ty)=>{ if(ty<0||ty>=WORLD_H||tx<0||tx>=WORLD_W) return false; return worldData.tiles[ty] && worldData.tiles[ty][tx]==='lava'; };
+    if(checkLava(ptxC,ptyC)||checkLava(ptxB,ptyB)){
+      if(!player._lavaCooldown||player._lavaCooldown<=0){
+        player.vy=-10; player.vx=(player.facing||1)*6;
+        player._lavaCooldown=90;
+        showDeathFlash('🔥 Lav sana zarar veriyor!');
+      }
+    }
+    if(player._lavaCooldown>0) player._lavaCooldown-=delta;
+  }
+
+  if(gameRunning){
+    // basılı tutarak tekrarlı vuruş (sadece sol tık ile kırma)
+    if(mouseDown && !mouseIsRight && mouseTx>=0){
+      punchTimer-=delta;
+      if(punchTimer<=0){ handleInteract(mouseTx,mouseTy,0,0,false,false); punchTimer=18; }
+    }
+  }
+
+  world.scale.set(zoom);
+  camX=player.x*zoom-app.renderer.width/2; camY=player.y*zoom-app.renderer.height/2;
+  camX=Math.max(0, Math.min(WORLD_W*TILE*zoom-app.renderer.width, camX));
+  camY=Math.max(0, Math.min(WORLD_H*TILE*zoom-app.renderer.height, camY));
+  world.x=-camX; world.y=-camY;
+  if(viewportRenderActive) updateViewportTiles(false);
+  if(activeMission) updateMissionHud();
+  bgTiles.forEach(bt=>{ bt.sprite.tilePosition.x = -camX*bt.factor; });
+  bgLayer.y = -camY*0.05;
+  if(bgLayer._clouds) bgLayer._clouds.x = Math.sin(Date.now()/8000)*10 - camX*0.06;
+
+  charSprite.x=player.x; charSprite.y=player.y; charSprite.scale.x=-player.facing;
+  nameLabel.x=player.x; nameLabel.y=player.y-30;
+  const myBadge = (wrenchMode && selectedHotbar===0) ? ' [🔧]' : '';
+  nameLabel.text=currentUser ? (currentUser.username + myBadge) : '';
+  nameLabel.style.fill=(worldData && currentUser && worldData.owner===currentUser.username)?0x5cff5c:0xffffff;
+  if(bubbleText){
+    bubbleTimer-=delta/60;
+    bubbleText.x=player.x; bubbleText.y=player.y-34;
+    bubbleText.alpha = bubbleTimer<1? Math.max(0,bubbleTimer):1;
+    if(bubbleTimer<=0){ world.removeChild(bubbleText); bubbleText=null; }
+  }
+
+  // durum bazlı animasyon seçimi: alt gövde her zaman hareket durumuna göre oynar (jump>walk>idle),
+  // üst gövde vuruş katmanı bağımsız olarak ayrıca tetiklenir (setCharAnim içinde overlay).
+  const moving = Math.abs(player.vx)>0.4 && player.onGround;
+  const bodyState = !player.onGround ? 'jump' : (moving ? 'walk' : 'idle');
+  setCharAnim(charSprite, bodyState, {speed: bodyState==='jump'?0.10:(bodyState==='walk'?0.14:0.06)});
+  if(punchT>0){ setCharAnim(charSprite,'attack'); }
+  updateWingMotion(charSprite, bodyState, Date.now());
+
+  if(punchT>0){ punchT-=delta*0.045; if(punchT<=0) punchT=0; }
+  updateDrops(delta);
+  updateParticles(delta);
+  updateAmbient(delta);
+  updateMatrixRain(delta);
+  updateRemotePlayers(delta);
+  sendMoveIfChanged();
+  updateGrowTooltip();
+  if(Math.random()<0.02) renderPlants();
+  $('gemCount').textContent=gems;
+}
+let camX=0, camY=0, zoom=1;
+app.view.addEventListener('wheel', e=>{
+  if(!gameRunning) return;
+  e.preventDefault();
+  zoom += (e.deltaY<0? 0.1 : -0.1);
+  zoom = Math.max(0.7, Math.min(2, zoom));
+}, {passive:false});
+document.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const skipIds = new Set(['btnEquip','btnDrop','btnTrash','dropQtyConfirm']);
+  if(skipIds.has(btn.id)) return;
+  if(btn.closest('#storeList')) return; // mağaza satın alma kendi sesini çalar
+  playSfx('button');
+});
+app.ticker.add(()=>update(app.ticker.deltaTime));
+setInterval(()=>{ if(gameRunning) renderPlants(); },1000);
+
+/* ===================================================
+   HEALTH / DAMAGE / DEATH / RESPAWN SYSTEM
+=================================================== */
+let myHealth = 10, myMaxHealth = 10;
+let _deathCountTimer = null;
+
+function updateHealthBar(hp, maxHp) {
+  myHealth = hp; myMaxHealth = maxHp || 10;
+  const bar = document.getElementById('healthBar');
+  const hearts = document.getElementById('heartIcons');
+  const txt = document.getElementById('hpText');
+  if (!bar) return;
+  bar.classList.remove('hidden');
+  hearts.innerHTML = '';
+  const total = Math.ceil(maxHp / 2);
+  const filled = Math.ceil(hp / 2);
+  for (let i = 0; i < total; i++) {
+    const h = document.createElement('span');
+    h.className = 'heart' + (i < filled ? '' : ' empty');
+    h.textContent = '❤️';
+    if (i < filled && i >= filled - 1 && hp % 2 === 1) h.textContent = '🤍'; // half heart
+    hearts.appendChild(h);
+  }
+  txt.textContent = `${hp}/${maxHp}`;
+}
+
+function showDeathScreen(msg) {
+  const ds = document.getElementById('deathScreen');
+  const dm = document.getElementById('deathMsg');
+  const dc = document.getElementById('deathCountdown');
+  if (!ds) return;
+  dm.textContent = msg || 'Öldün!';
+  ds.classList.add('show');
+  let count = 5;
+  dc.textContent = count;
+  if (_deathCountTimer) clearInterval(_deathCountTimer);
+  _deathCountTimer = setInterval(() => {
+    count--;
+    dc.textContent = count;
+    if (count <= 0) {
+      clearInterval(_deathCountTimer);
+      ds.classList.remove('show');
+    }
+  }, 1000);
+}
+
+function flashDamage() {
+  const root = document.getElementById('root');
+  root.classList.remove('damage-flash');
+  void root.offsetWidth; // reflow
+  root.classList.add('damage-flash');
+}
+
+// Web Audio pain sound (Minecraft-style "ugh")
+function playPainSound() {
+  try {
+    const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx2.createOscillator();
+    const g = ctx2.createGain();
+    o.connect(g); g.connect(ctx2.destination);
+    o.type = 'square';
+    o.frequency.setValueAtTime(220, ctx2.currentTime);
+    o.frequency.linearRampToValueAtTime(110, ctx2.currentTime + 0.2);
+    g.gain.setValueAtTime(0.3, ctx2.currentTime);
+    g.gain.linearRampToValueAtTime(0, ctx2.currentTime + 0.25);
+    o.start(); o.stop(ctx2.currentTime + 0.25);
+  } catch(e) {}
+}
+
+// Registered via wireSocketEvents to ensure socket exists
+function setupExtraSocketEvents() {
+  if (!socket) return;
+  socket.on('player:damage', (data) => {
+    updateHealthBar(data.health, data.maxHealth || 10);
+    flashDamage();
+    playPainSound();
+  });
+
+  socket.on('player:death', (data) => {
+    if (data.id === socket.id || (currentUser && data.username === currentUser.username)) {
+      showDeathScreen(`${data.username || 'Sen'} öldü!`);
+      updateHealthBar(0, myMaxHealth);
+    }
+  });
+
+  socket.on('player:respawn', (data) => {
+    if (data.id === socket.id) {
+      updateHealthBar(10, 10);
+      if (player) { player.x = data.x; player.y = data.y; }
+    }
+  });
+
+  socket.on('trade:incoming', (data) => {
+    pendingTradeFrom = data.fromSocketId;
+    document.getElementById('tradeRequestText').textContent = `🔄 ${data.fromUsername} takas isteği gönderdi!`;
+    document.getElementById('tradeRequestPopup').classList.remove('hidden');
+    setTimeout(() => document.getElementById('tradeRequestPopup').classList.add('hidden'), 15000);
+  });
+
+  socket.on('trade:started', (data) => {
+    openTradeModal(data.sessionId, data.otherUsername, data.youAreA);
+  });
+
+  socket.on('trade:offerUpdated', (data) => {
+    if (data.sessionId !== activeTradeId) return;
+    renderTradeItems(data.offerA, data.offerB);
+    const status = [];
+    if (data.readyA) status.push('✅ ' + document.getElementById('tradeSideA').textContent);
+    if (data.readyB) status.push('✅ ' + document.getElementById('tradeSideB').textContent);
+    document.getElementById('tradeStatus').textContent = status.length ? status.join(' | ') + ' hazır!' : 'Eşyaları seç ve hazır olunca onayla.';
+  });
+
+  socket.on('trade:review', (data) => {
+    if (data.sessionId !== activeTradeId) return;
+    renderTradeItems(data.offerMine, data.offerTheirs);
+    document.getElementById('tradeStatus').textContent = '🔍 Teklifi incele — onayla veya iptal et!';
+    document.getElementById('btnTradeReady').textContent = '✅ Onayla';
+    document.getElementById('btnTradeReady').onclick = () => {
+      socket.emit('trade:confirm', { sessionId: activeTradeId });
+      document.getElementById('tradeStatus').textContent = '⏳ Onay bekleniyor...';
+    };
+  });
+
+  socket.on('trade:completed', (data) => {
+    if (data.yourInventory) inventory = data.yourInventory;
+    document.getElementById('tradeModal').classList.remove('show');
+    activeTradeId = null;
+    if (typeof buildHotbarUI === 'function') buildHotbarUI();
+    if (typeof buildFullInv === 'function') buildFullInv();
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2040;border:2px solid #2fbf62;border-radius:12px;padding:16px 24px;color:#fff;font-size:16px;z-index:200;text-align:center;';
+    msg.textContent = '✅ Takas tamamlandı!';
+    document.body.appendChild(msg);
+    setTimeout(() => msg.remove(), 2500);
+  });
+
+  socket.on('trade:cancelled', (data) => {
+    document.getElementById('tradeModal').classList.remove('show');
+    activeTradeId = null;
+    if (data.reason) {
+      const msg = document.createElement('div');
+      msg.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a2040;border:2px solid #ff4d4d;border-radius:12px;padding:16px 24px;color:#fff;font-size:14px;z-index:200;text-align:center;';
+      msg.textContent = '❌ ' + data.reason;
+      document.body.appendChild(msg);
+      setTimeout(() => msg.remove(), 3000);
+    }
+  });
+}
+
+/* ===================================================
+   WRENCH SYSTEM (wrenchMode already declared above)
+=================================================== */
+function checkWrenchMode() {
+  if (!currentUser || !inventory) return false;
+  return inventory.some(i => i.id === 'wrench' && i.count > 0);
+}
+
+/* ===================================================
+   TRADE SYSTEM (Full Growtopia-style)
+=================================================== */
+if (typeof activeTradeId === 'undefined') var activeTradeId = null;
+if (typeof tradeWithSocketId === 'undefined') var tradeWithSocketId = null;
+if (typeof tradeWithUsername === 'undefined') var tradeWithUsername = '';
+if (typeof pendingTradeFrom === 'undefined') var pendingTradeFrom = null;
+
+function openTradeModal(sessionId, otherUsername, youAreA) {
+  activeTradeId = sessionId;
+  tradeWithUsername = otherUsername;
+  document.getElementById('tradeSideA').textContent = '🧑 ' + (currentUser ? currentUser.username : 'Sen');
+  document.getElementById('tradeSideB').textContent = '👤 ' + otherUsername;
+  document.getElementById('tradeItemsA').innerHTML = '';
+  document.getElementById('tradeItemsB').innerHTML = '';
+  document.getElementById('tradeStatus').textContent = 'Eşyaları seç ve hazır olunca onayla.';
+  document.getElementById('tradeModal').classList.add('show');
+}
+
+function renderTradeItems(offerA, offerB) {
+  const sideA = document.getElementById('tradeItemsA');
+  const sideB = document.getElementById('tradeItemsB');
+  sideA.innerHTML = '';
+  sideB.innerHTML = '';
+  (offerA || []).forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'tradeItem';
+    d.innerHTML = `<span>${it.id}</span><span style="color:#ffb347">x${it.count}</span>`;
+    d.onclick = () => {
+      if (!activeTradeId) return;
+      socket.emit('trade:setItem', { sessionId: activeTradeId, itemId: it.id, count: 0 });
+    };
+    sideA.appendChild(d);
+  });
+  (offerB || []).forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'tradeItem';
+    d.innerHTML = `<span>${it.id}</span><span style="color:#ffb347">x${it.count}</span>`;
+    sideB.appendChild(d);
+  });
+}
+
+document.getElementById('btnTradeCancel').onclick = () => {
+  if (activeTradeId && socket) socket.emit('trade:cancel', { sessionId: activeTradeId });
+  document.getElementById('tradeModal').classList.remove('show');
+  activeTradeId = null;
+};
+
+document.getElementById('btnTradeReady').onclick = () => {
+  if (!activeTradeId || !socket) return;
+  socket.emit('trade:ready', { sessionId: activeTradeId });
+  document.getElementById('tradeStatus').textContent = '⏳ Hazır bekleniyor...';
+};
+
+document.getElementById('btnAddTradeItem').onclick = () => {
+  if (!activeTradeId || !inventory || !socket) return;
+  const itemId = prompt('Eklenecek eşya ID (örn: dirt):');
+  if (!itemId) return;
+  const count = parseInt(prompt('Miktar:') || '1');
+  if (!count || count < 1) return;
+  socket.emit('trade:setItem', { sessionId: activeTradeId, itemId, count });
+};
+
+// Trade incoming request popup
+document.getElementById('btnAcceptTrade').onclick = () => {
+  if (!pendingTradeFrom || !socket) return;
+  const targetId = typeof pendingTradeFrom === 'object' ? pendingTradeFrom.fromSocketId : pendingTradeFrom;
+  socket.emit('trade:accept', { withSocketId: targetId }, (res) => {
+    if (res && res.ok) {
+      document.getElementById('tradeRequestPopup').classList.add('hidden');
+    }
+  });
+};
+
+document.getElementById('btnDeclineTrade').onclick = () => {
+  pendingTradeFrom = null;
+  document.getElementById('tradeRequestPopup').classList.add('hidden');
+};
+
+/* ===================================================
+   SLOT PURCHASE BUTTON (in inventory header)
+=================================================== */
+(function initSlotBuy() {
+  const invHeader = document.getElementById('invHeader');
+  if (!invHeader) return;
+  const btn = document.createElement('button');
+  btn.id = 'btnBuySlot';
+  btn.textContent = '+ Slot (1000💎)';
+  btn.onclick = () => {
+    if (!socket) return alert('Bağlantı henüz hazır değil.');
+    socket.emit('shop:buySlot', {}, (res) => {
+      if (res && res.ok) {
+        alert(`✅ +10 slot satın alındı! Yeni maks: ${res.newMaxSlots}`);
+      } else {
+        alert('❌ ' + (res && res.error ? res.error : 'Hata'));
+      }
+    });
+  };
+  invHeader.appendChild(btn);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,13 @@
+2026-08-01 güncelleme
+Bu paket şunları içerir:
+- Karakter animasyon katmanlaması (yürürken punch artık kesilmiyor, üst gövde overlay)
+- Kanat prosedürel hareket animasyonu (idle/walk/jump)
+- Zengin Item Database (rarity, tradeable, droppable, sellable, equipSlot, category)
+- Permission Groups: OWNER/CO_OWNER/BUILDER/VISITOR/BANNED (eski access formatı otomatik migrate edilir)
+- Player Shop sistemi (shop_stand bloğu, atomik satın alma, shop_transactions denetim tablosu)
+- Chat komut sistemi: /help /who /msg /reply /status /sit + dünya-sahibi /kick /ban /unban + admin /sban /sunban /mute /unmute
+- Global tek Matrix dünyası (300x100, günlük deterministik seed, 7 bölge, viewport render optimizasyonu)
+- Matrix görevleri: Telephone Line (kablo bağlama) ve Courier (teslimat), Agent düşmanlar, USB Drive/Hard Drive loot
+
+ÖNEMLİ: server/db.js içindeki initSchema() ilk açılışta yeni kolonları (shops, banned_until vb.) otomatik ekler, mevcut veritabanına ALTER TABLE ile uygulanır, veri kaybı olmaz.
+

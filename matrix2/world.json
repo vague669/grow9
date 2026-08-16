@@ -1,0 +1,12 @@
+# Matrix 2 World Configuration
+
+```json
+{
+  "name": "Matrix2",
+  "seed": 12345678,
+  "dimensions": { "width": 80, "height": 60 },
+  "description": "Second matrix world for testing custom tiles and NPCs."
+}
+```
+
+Use this file as a template for generating the Matrix 2 world in `server/worldgen.js`.
