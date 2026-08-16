@@ -3001,10 +3001,6 @@ function checkWrenchMode() {
 /* ===================================================
    TRADE SYSTEM (Full Growtopia-style)
 =================================================== */
-if (typeof activeTradeId === 'undefined') var activeTradeId = null;
-if (typeof tradeWithSocketId === 'undefined') var tradeWithSocketId = null;
-if (typeof tradeWithUsername === 'undefined') var tradeWithUsername = '';
-if (typeof pendingTradeFrom === 'undefined') var pendingTradeFrom = null;
 
 function openTradeModal(sessionId, otherUsername, youAreA) {
   activeTradeId = sessionId;
